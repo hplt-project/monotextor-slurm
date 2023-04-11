@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from argparse import ArgumentParser
-import json
+import orjson
 import sys
 
 
@@ -20,4 +20,4 @@ for line in sys.stdin:
     for i, field in enumerate(fields):
         jsonl[field] = parts[i]
 
-    print(json.dumps(jsonl))
+    print(orjson.dumps(jsonl).decode('utf-8'))
