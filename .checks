@@ -1,4 +1,5 @@
-[[ ${SBATCH_ACCOUNT-} ]] || echo "\$SBATCH_ACCOUNT has to be defined in .env"
-[[ ${SBATCH_OUTPUT-} ]] || echo "\$SBATCH_OUTPUT has to be defined in .env"
-[[ ${WARC2TEXT_DIR-} ]] || echo "\$WARC2TEXT_DIR has to be defined in .env"
-[[ ${WORKSPACE-} ]] || echo "\$WORKSPACE has to be defined in .env"
+[[ ${SBATCH_ACCOUNT-} ]] || { echo "\$SBATCH_ACCOUNT has to be defined in .env"; exit 1; }
+[[ ${SLURM_LOGS_DIR-} ]] || { echo "\$SLURM_LOGS_DIR has to be defined in .env"; exit 1; }
+[[ ${WARC2TEXT_DIR-} ]] || { echo "\$WARC2TEXT_DIR has to be defined in .env"; exit 1; }
+[[ ${WORKSPACE-} ]] || { echo "\$WORKSPACE has to be defined in .env"; exit 1; }
+[[ ${MONOCLEANER_MODELS-} ]] || { echo "\$MONOCLEANER_MODELS has to be defined in .env"; exit 1; }

@@ -5,7 +5,7 @@ source .checks
 
 L=$1
 COLLECTIONS=${@:2}
-mkdir -p $SBATCH_OUTPUT
+mkdir -p $SLURM_LOGS_DIR
 
-SBATCH_OUTPUT="$SBATCH_OUTPUT/%x.out" \
-sbatch -J merge-batching-$L 00.merge-batching $L $COLLECTIONS
+SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x.out" \
+sbatch -J $L-merge-batching 00.merge-batching $L $COLLECTIONS

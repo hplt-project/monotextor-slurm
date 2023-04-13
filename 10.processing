@@ -1,0 +1,34 @@
+#!/bin/bash
+#SBATCH --job-name=processing
+#SBATCH --partition="small"
+#SBATCH --time=00:30:00
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=2
+#SBATCH --output=logs/%x-%A_%a.out
+set -euo pipefail
+source .env
+source venv/bin/activate
+
+L=$1
+INPUT=$WORKSPACE/$L/batch.$SLURM_ARRAY_TASK_ID.zst
+OUTPUT=$WORKSPACE/$L/scored.$SLURM_ARRAY_TASK_ID.zst
+MODEL=$MONOCLEANER_MODELS/$L
+
+
+zstdcat $INPUT \
+| monofixer --scol 2 \
+    --ignore_normalization --ignore_segmentation \
+    --ignore_empty --ignore_duplicates \
+    - - $L \
+| monocleaner --scol 2 \
+    --add_lang_ident --detect_script \
+    --disable_hardrules \
+    $MODEL - - \
+| zstd \
+> $OUTPUT.tmp_$SLURM_ARRAY_JOB_ID \
+|| {
+    echo "Error in pipeline: ${PIPESTATUS[@]}"
+    exit 1
+}
+
+mv $OUTPUT.tmp_$SLURM_ARRAY_JOB_ID $OUTPUT
