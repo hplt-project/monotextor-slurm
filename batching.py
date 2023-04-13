@@ -11,7 +11,8 @@ import zstandard
 
 SIZE = 512 * 1024 * 1024
 
-parser = ArgumentParser(description="Gather collection name, URL and text."
+parser = ArgumentParser(description="Gather collection name, URL and text "
+                        " from warc2text batches."
                         " Split lines into batches."
                         " Output a tab-separated file."
                         "\nFormat: url,paragraph,<paragraph_id>,collection")
@@ -40,15 +41,20 @@ cctx = zstandard.ZstdCompressor(threads=2)
 
 # Iterate over collections
 for coll in sorted(os.listdir(args.directory)):
+    # Check it is a collection dir
+    if not os.path.isdir(pjoin(args.directory, coll)):
+        continue
+
     # Convert directory numbers to int so they can be sorted numerically
-    for dirnum  in sorted(map(int, os.listdir(pjoin(args.directory, coll)))):
+    for dirnum in sorted(map(int, os.listdir(pjoin(args.directory, coll)))):
         dirnum = str(dirnum) # to string again
 
         # Check directory exist for that language
         curpath = pjoin(args.directory, coll, dirnum, args.lang)
         if not os.path.isdir(curpath):
-            print(f"WARNING: {coll}/{dirnum} does not exist", file=sys.stderr)
+            #print(f"WARNING: {coll}/{dirnum} does not exist", file=sys.stderr)
             continue
+        print(f"Reading {coll}/{dirnum}", file=sys.stderr)
 
         # Read text and url files
         with gzip.open(pjoin(curpath, 'text.gz'), 'r') as p, \
@@ -76,7 +82,7 @@ for coll in sorted(os.listdir(args.directory)):
                     lines = base64.b64decode(doc.strip()) \
                                 .decode('utf-8', errors='strict').split('\n')
                 except UnicodeDecodeError:
-                    print("Unicode error in doc {i} collection {coll}",
+                    print("Unicode error in doc {i} collection {coll} w2t batch {dirnum}",
                             file=sys.stderr)
 
                 # Print each document with its url and collection
