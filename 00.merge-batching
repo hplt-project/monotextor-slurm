@@ -1,0 +1,15 @@
+#!/bin/bash
+#SBATCH --job-name=merge-batching
+#SBATCH --partition="debug"
+#SBATCH --time=00:30:00
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=2
+#SBATCH --output=logs/%x.out
+set -euo pipefail
+source .env
+source venv/bin/activate
+
+L=$1
+COLLECTIONS=${@:2}
+
+python batching.py -l $L $WARC2TEXT_DIR $WORKSPACE
