@@ -69,10 +69,13 @@ for coll in sorted(os.listdir(args.directory)):
                     batch += 1
                     if ofp is not None:
                         ofp.close()
+                        os.rename(ofp_name, ofp_name.removesuffix('.tmp'))
 
+                    # Files are written to to temp, renamed when finished
+                    ofp_name = pjoin(args.output_dir,
+                                     args.lang, f'batch.{batch}.zst.tmp')
                     ofp = zstandard.open(
-                            pjoin(args.output_dir, args.lang, f'batch.{batch}.zst'),
-                            'wt', encoding='utf-8', cctx=cctx)
+                            ofp_name, 'wt', encoding='utf-8', cctx=cctx)
                     n_chars = 0
 
                 # read b64 encoded documents and their urls
@@ -90,3 +93,7 @@ for coll in sorted(os.listdir(args.directory)):
                     if line:
                         n_chars += len(line)
                         print(docurl, line, coll, sep='\t', file=ofp)
+
+if ofp:
+    ofp.close()
+    os.rename(ofp_name, ofp_name.removesuffix('.tmp'))
