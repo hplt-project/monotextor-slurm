@@ -1,0 +1,4 @@
+[[ ${SBATCH_ACCOUNT-} ]] || echo "\$SBATCH_ACCOUNT has to be defined in .env"
+[[ ${SBATCH_OUTPUT-} ]] || echo "\$SBATCH_OUTPUT has to be defined in .env"
+[[ ${WARC2TEXT_DIR-} ]] || echo "\$WARC2TEXT_DIR has to be defined in .env"
+[[ ${WORKSPACE-} ]] || echo "\$WORKSPACE has to be defined in .env"
