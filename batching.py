@@ -64,20 +64,6 @@ for coll in sorted(os.listdir(args.directory)):
             # propagate url and collection for each document line
             # tab-separated text compressed, splitted in batchs of SIZE
             for i, doc in enumerate(p):
-                # batch completed, create new one
-                if n_chars >= args.size:
-                    batch += 1
-                    if ofp is not None:
-                        ofp.close()
-                        os.rename(ofp_name, ofp_name.removesuffix('.tmp'))
-
-                    # Files are written to to temp, renamed when finished
-                    ofp_name = pjoin(args.output_dir,
-                                     args.lang, f'batch.{batch}.zst.tmp')
-                    ofp = zstandard.open(
-                            ofp_name, 'wt', encoding='utf-8', cctx=cctx)
-                    n_chars = 0
-
                 # read b64 encoded documents and their urls
                 try:
                     docurl = u.readline().strip() \
@@ -90,9 +76,24 @@ for coll in sorted(os.listdir(args.directory)):
 
                 # Print each document with its url and collection
                 for line in lines:
+                    # batch completed, create new one
+                    if n_chars >= args.size:
+                        batch += 1
+                        if ofp is not None:
+                            ofp.close()
+                            os.rename(ofp_name, ofp_name.removesuffix('.tmp'))
+
+                        # Files are written to to temp, renamed when finished
+                        ofp_name = pjoin(args.output_dir,
+                                         args.lang, f'batch.{batch}.zst.tmp')
+                        ofp = zstandard.open(
+                                ofp_name, 'wt', encoding='utf-8', cctx=cctx)
+                        n_chars = 0
+
                     if line:
                         n_chars += len(line)
                         print(docurl, line, coll, sep='\t', file=ofp)
+
 
 if ofp:
     ofp.close()
