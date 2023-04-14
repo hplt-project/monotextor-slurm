@@ -1,0 +1,29 @@
+#!/bin/bash
+#SBATCH --job-name=reduce
+#SBATCH --partition="small"
+#SBATCH --time=00:30:00
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=2
+#SBATCH --output=logs/%x.out
+set -euo pipefail
+shopt -s failglob
+source .env
+source venv/bin/activate
+
+L=$1
+RAW=$WORKSPACE/$L/$L.raw.zst
+JSONL=$WORKSPACE/$L/$L.raw.jsonl.zst
+TMPSFX=tmp_$SLURM_JOB_ID
+
+cat $WORKSPACE/$L/scored.[0-9]*.zst \
+| tee $RAW.$TMPSFX \
+| zstdcat \
+| python tsv2jsonl.py -c "url,text,collection,lang,score" \
+| zstd >$JSONL.$TMPSFX \
+|| {
+    echo "Error in pipeline: ${PIPESTATUS[@]}"
+    exit 1
+}
+
+mv $RAW.$TMPSFX $RAW
+mv $JSONL.$TMPSFX $JSONL
