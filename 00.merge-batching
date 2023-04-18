@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=merge-batching
 #SBATCH --partition="small"
-#SBATCH --time=05:00:00
+#SBATCH --time=12:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --output=logs/%x.out
