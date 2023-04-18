@@ -19,7 +19,7 @@ cat $WORKSPACE/$L/scored.[0-9]*.zst \
 | tee $RAW.$TMPSFX \
 | zstdcat \
 | python tsv2jsonl.py -c "url,text,collection,lang,score" \
-| zstd >$JSONL.$TMPSFX \
+| zstdmt -10 -T2 >$JSONL.$TMPSFX \
 || {
     echo "Error in pipeline: ${PIPESTATUS[@]}"
     exit 1

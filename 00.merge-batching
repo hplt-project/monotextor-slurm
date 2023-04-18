@@ -13,4 +13,4 @@ L=$1
 COLLECTIONS=${@:2}
 
 time \
-python batching.py -l $L $WARC2TEXT_DIR $WORKSPACE
+python batching.py -j 1 -l $L $WARC2TEXT_DIR $WORKSPACE

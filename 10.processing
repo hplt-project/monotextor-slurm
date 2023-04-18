@@ -24,7 +24,7 @@ zstdcat $INPUT \
     --add_lang_ident --detect_script \
     --disable_hardrules \
     $MODEL - - \
-| zstd \
+| zstdmt -10 \
 > $OUTPUT.tmp_$SLURM_ARRAY_JOB_ID \
 || {
     echo "Error in pipeline: ${PIPESTATUS[@]}"

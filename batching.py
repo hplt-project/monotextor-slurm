@@ -20,6 +20,8 @@ parser.add_argument('-l', '--lang', type=str,
                     required=True, help='Language to process')
 parser.add_argument('-s', '--size', type=int, default=SIZE,
                     help='Size of batches in number of characters (approximated)')
+parser.add_argument('-j', '--threads', type=int, default=2,
+                    help='Number of threads to use for zstd compresssion')
 parser.add_argument('directory', type=str,
                     help='warc2text directory where collections are stored')
 parser.add_argument('output_dir', type=str,
@@ -37,7 +39,7 @@ except FileExistsError:
 ofp = None
 n_chars = args.size # set to size, trigger file creation in the first step
 batch = 0 # batch 0 will never be created
-cctx = zstandard.ZstdCompressor(threads=2)
+cctx = zstandard.ZstdCompressor(level=10, threads=args.threads)
 
 # Iterate over collections
 for coll in sorted(os.listdir(args.directory)):
