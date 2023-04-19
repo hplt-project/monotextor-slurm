@@ -5,7 +5,7 @@ source .env
 L=$1
 
 if [ "$L" == "all" ]; then
-    rm -I $WORKSPACE/*/*tmp_*
+    rm --interactive=once $WORKSPACE/*/*tmp_*
 else
-    rm -I $WORKSPACE/$L/*tmp_*
+    rm --interactive=once $WORKSPACE/$L/*tmp_*
 fi
