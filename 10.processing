@@ -1,9 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=processing
 #SBATCH --partition="small"
-#SBATCH --time=02:00:00
+#SBATCH --time=12:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
+#SBATCH --mem-per-cpu=1750
 #SBATCH --output=logs/%x-%A_%a.out
 set -euo pipefail
 source .env
