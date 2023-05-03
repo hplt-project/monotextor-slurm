@@ -6,9 +6,9 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --mem-per-cpu=1750
 #SBATCH --output=logs/%x-%A_%a.out
-set -euo pipefail
+module load cray-python/3.9.12.1
 source .env
-source venv/bin/activate
+set -euo pipefail
 
 L=$1
 INPUT=$WORKSPACE/$L/batch.$SLURM_ARRAY_TASK_ID.zst

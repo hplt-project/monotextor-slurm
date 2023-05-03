@@ -5,9 +5,9 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --output=logs/%x.out
-set -euo pipefail
+module load cray-python/3.9.12.1
 source .env
-source venv/bin/activate
+set -euo pipefail
 
 L=$1
 COLLECTIONS=${@:2}

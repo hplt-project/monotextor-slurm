@@ -1,4 +1,4 @@
-orjson==3.8.9
-zstandard==0.20.0
+orjson==3.8.11
+zstandard==0.21.0
 bifixer==0.8.8
 monocleaner==1.3.0

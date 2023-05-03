@@ -1,6 +1,7 @@
 #!/bin/bash
-set -euo pipefail
 source .env
+source .checks
+set -euo pipefail
 
 L=$1
 
