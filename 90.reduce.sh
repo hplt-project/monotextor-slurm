@@ -1,4 +1,6 @@
 #!/bin/bash
+# Reduce the map procedure
+# merging all the batches and converting to the final jsonl format
 source .env
 source .checks
 set -euo pipefail

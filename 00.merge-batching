@@ -5,6 +5,9 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --output=logs/%x.out
+# Run batching python scripts that reads url.gz and text.gz
+# decodes base64 text and creates tsv zstd compressed batches
+# with one paragraph per line, url and collection metadata
 module load cray-python/3.9.12.1
 source .env
 set -euo pipefail
@@ -12,5 +15,6 @@ set -euo pipefail
 L=$1
 COLLECTIONS=${@:2}
 
+# profile batching command
 time \
 python batching.py -j 1 -l $L $WARC2TEXT_DIR $WORKSPACE
