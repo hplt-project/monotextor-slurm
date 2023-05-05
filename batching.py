@@ -9,7 +9,7 @@ import os
 import zstandard
 
 
-SIZE = 256 * 1024 * 1024
+SIZE = 10 * (1024 ** 3)
 
 parser = ArgumentParser(description="Gather collection name, URL and text "
                         " from warc2text batches."

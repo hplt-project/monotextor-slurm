@@ -1,12 +1,13 @@
 #!/bin/bash
 #SBATCH --job-name=processing
-#SBATCH --partition="small"
+#SBATCH --partition="standard"
 #SBATCH --time=12:00:00
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=2
-#SBATCH --mem-per-cpu=1750
+#SBATCH --nodes=1
+#SBATCH --ntasks=128
+#SBATCH --mem=0
 #SBATCH --output=logs/%x-%A_%a.out
 module load cray-python/3.9.12.1
+module load parallel
 source .env
 set -euo pipefail
 
@@ -15,21 +16,31 @@ INPUT=$WORKSPACE/$L/batch.$SLURM_ARRAY_TASK_ID.zst
 OUTPUT=$WORKSPACE/$L/scored.$SLURM_ARRAY_TASK_ID.zst
 MODEL=$MONOCLEANER_MODELS/$L
 
+processing(){
+    L=$1
+    MODEL=$2
+    set -euo pipefail
+
+    monofixer --scol 2 \
+        --ignore_normalization --ignore_segmentation \
+        --ignore_empty --ignore_duplicates \
+        --quiet - - $L \
+    | monocleaner --scol 2 \
+        --add_lang_ident --detect_script \
+        --disable_hardrules --quiet \
+        $MODEL - - \
+    || {
+        echo "Error in pipeline: ${PIPESTATUS[@]}" >&2
+        exit 1
+    }
+}
+export -f processing
 
 zstdcat $INPUT \
-| monofixer --scol 2 \
-    --ignore_normalization --ignore_segmentation \
-    --ignore_empty --ignore_duplicates \
-    - - $L \
-| monocleaner --scol 2 \
-    --add_lang_ident --detect_script \
-    --disable_hardrules \
-    $MODEL - - \
-| zstdmt -10 \
+| parallel --pipe -k \
+    -j128 --block 10M processing $L $MODEL \
+| zstdmt -T6 -10 \
 > $OUTPUT.tmp_$SLURM_ARRAY_JOB_ID \
-|| {
-    echo "Error in pipeline: ${PIPESTATUS[@]}"
-    exit 1
-}
+
 
 mv $OUTPUT.tmp_$SLURM_ARRAY_JOB_ID $OUTPUT
