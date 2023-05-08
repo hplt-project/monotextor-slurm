@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 from argparse import ArgumentParser
+from subprocess import Popen, PIPE
 from os.path import join as pjoin
 import gzip
 import base64
 import sys
 import os
-
-import zstandard
 
 
 SIZE = 10 * (1024 ** 3)
@@ -35,11 +34,15 @@ try:
 except FileExistsError:
     pass
 
+# Check decompress commands exist
+from shutil import which
+assert which('pigz') is not None
+assert which('zcat') is not None
+assert which('zstd') is not None
 
 ofp = None
 n_chars = args.size # set to size, trigger file creation in the first step
 batch = 0 # batch 0 will never be created
-cctx = zstandard.ZstdCompressor(level=10, threads=args.threads)
 
 # Iterate over collections
 for coll in sorted(os.listdir(args.directory)):
@@ -59,44 +62,65 @@ for coll in sorted(os.listdir(args.directory)):
         print(f"Reading {coll}/{dirnum}", file=sys.stderr)
 
         # Read text and url files
-        with gzip.open(pjoin(curpath, 'text.gz'), 'r') as p, \
-                gzip.open(pjoin(curpath, 'url.gz'), 'r') as u:
+        p = Popen(['zcat', pjoin(curpath, 'text.gz')],
+                  stdout = PIPE, stderr = PIPE)
+        u = Popen(['zcat', pjoin(curpath, 'url.gz')],
+                  stdout = PIPE, stderr = PIPE)
 
-            # Each document in a line base64 encoded
-            # propagate url and collection for each document line
-            # tab-separated text compressed, splitted in batchs of SIZE
-            for i, doc in enumerate(p):
-                # read b64 encoded documents and their urls
-                try:
-                    docurl = u.readline().strip() \
-                                .decode('utf-8', errors='strict')
-                    lines = base64.b64decode(doc.strip()) \
-                                .decode('utf-8', errors='strict').split('\n')
-                except UnicodeDecodeError:
-                    print("Unicode error in doc {i} collection {coll} w2t batch {dirnum}",
-                            file=sys.stderr)
+        # Each document in a line base64 encoded
+        # propagate url and collection for each document line
+        # tab-separated text compressed, splitted in batchs of SIZE
+        for i, doc in enumerate(p.stdout):
+            # read b64 encoded documents and their urls
+            try:
+                docurl = u.stdout.readline().strip() \
+                            .decode('utf-8', errors='strict')
+                lines = base64.b64decode(doc.strip()) \
+                            .decode('utf-8', errors='strict').split('\n')
+            except UnicodeDecodeError:
+                print("Unicode error in doc {i} collection {coll} w2t batch {dirnum}",
+                        file=sys.stderr)
 
-                # Print each document with its url and collection
-                for line in lines:
-                    # batch completed, create new one
-                    if n_chars >= args.size:
-                        batch += 1
-                        if ofp is not None:
-                            ofp.close()
-                            os.rename(ofp_name, ofp_name.removesuffix('.tmp'))
+            # Print each document with its url and collection
+            for line in lines:
+                # batch completed, create new one
+                if n_chars >= args.size:
+                    batch += 1
+                    if ofp is not None:
+                        ofp.stdin.close()
+                        ofp.wait(timeout=60)
+                        os.rename(ofp_name, ofp_name.removesuffix('.tmp'))
 
-                        # Files are written to to temp, renamed when finished
-                        ofp_name = pjoin(args.output_dir,
-                                         args.lang, f'batch.{batch}.zst.tmp')
-                        ofp = zstandard.open(
-                                ofp_name, 'wt', encoding='utf-8', cctx=cctx)
-                        n_chars = 0
+                    # Files are written to to temp, renamed when finished
+                    ofp_name = pjoin(args.output_dir,
+                                     args.lang, f'batch.{batch}.zst.tmp')
+                    ofp = Popen(['zstd', '-fo', ofp_name], encoding='utf-8',
+                                stdin=PIPE, stdout=PIPE, stderr=PIPE)
+                    n_chars = 0
 
-                    if line:
-                        n_chars += len(line)
-                        print(docurl, line, coll, sep='\t', file=ofp)
+                if line:
+                    n_chars += len(line)
+                    try:
+                        ofp.stdin.write(f'{docurl}\t{line}\t{coll}\n')
+                    except BrokenPipeError:
+                        print(ofp.stdout.read())
+                        print(ofp.stderr.read())
+                        sys.exit(1)
+
+        # Check child decompressing processes ended well
+        # otherwise print their stderr messages for easier debugging
+        p.wait(timeout=60)
+        u.wait(timeout=60)
+        if p.returncode != 0 or u.returncode != 0:
+            print("#### text.gz stderr ####", file=sys.stderr)
+            print(p.stderr.read(), file=sys.stderr)
+            print("#### url.gz stderr ####", file=sys.stderr)
+            print(u.stderr.read(), file=sys.stderr)
+            if p.returncode == 124 or u.returncode == 124:
+                print("#### Command timed out ####", file=sys.stderr)
+            raise RuntimeError()
 
 
 if ofp:
-    ofp.close()
+    ofp.stdin.close()
     os.rename(ofp_name, ofp_name.removesuffix('.tmp'))
