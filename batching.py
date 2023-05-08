@@ -1,125 +1,45 @@
-#!/usr/bin/env python3
 from argparse import ArgumentParser
 from subprocess import Popen, PIPE
-from os.path import join as pjoin
-import gzip
-import base64
+from shutil import which
 import sys
 import os
-
+assert which('zstd') is not None
 
 SIZE = 10 * (1024 ** 3)
 
-parser = ArgumentParser(description="Gather collection name, URL and text "
-                        " from warc2text batches."
-                        " Split lines into batches."
-                        " Output a tab-separated file."
-                        "\nFormat: url,paragraph,<paragraph_id>,collection")
-parser.add_argument('-l', '--lang', type=str,
-                    required=True, help='Language to process')
+parser = ArgumentParser(description="Split lines into batches zstdcompressed.")
 parser.add_argument('-s', '--size', type=int, default=SIZE,
                     help='Size of batches in number of characters (approximated)')
-parser.add_argument('-j', '--threads', type=int, default=2,
-                    help='Number of threads to use for zstd compresssion')
-parser.add_argument('directory', type=str,
-                    help='warc2text directory where collections are stored')
-parser.add_argument('output_dir', type=str,
-                    help='Output directory to store pieces.'
-                         ' Will follow the structure {output}/{lang}/batch.{num}.zst')
+parser.add_argument('output_prefix', type=str,
+                    help='Output files prefix to create bathes.'
+                         ' Will follow the structure {prefix}.{num}.zst')
 args = parser.parse_args()
-
-# Create directory if it does not exist
-try:
-    os.mkdir(pjoin(args.output_dir, args.lang))
-except FileExistsError:
-    pass
-
-# Check decompress commands exist
-from shutil import which
-assert which('pigz') is not None
-assert which('zcat') is not None
-assert which('zstd') is not None
 
 ofp = None
 n_chars = args.size # set to size, trigger file creation in the first step
 batch = 0 # batch 0 will never be created
+for line in sys.stdin:
+    # batch completed, create new one
+    if n_chars >= args.size:
+        batch += 1
+        if ofp is not None:
+            ofp.stdin.close()
+            ofp.wait(timeout=60)
+            os.rename(ofp_name, ofp_name.removesuffix('.tmp'))
 
-# Iterate over collections
-for coll in sorted(os.listdir(args.directory)):
-    # Check it is a collection dir
-    if not os.path.isdir(pjoin(args.directory, coll)):
-        continue
+        # Files are written to to temp, renamed when finished
+        ofp_name = f'{args.output_prefix}.{batch}.zst.tmp'
+        ofp = Popen(['zstd', '-fo', ofp_name], encoding='utf-8',
+                    stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        n_chars = 0
 
-    # Convert directory numbers to int so they can be sorted numerically
-    for dirnum in sorted(map(int, os.listdir(pjoin(args.directory, coll)))):
-        dirnum = str(dirnum) # to string again
-
-        # Check directory exist for that language
-        curpath = pjoin(args.directory, coll, dirnum, args.lang)
-        if not os.path.isdir(curpath):
-            #print(f"WARNING: {coll}/{dirnum} does not exist", file=sys.stderr)
-            continue
-        print(f"Reading {coll}/{dirnum}", file=sys.stderr)
-
-        # Read text and url files
-        p = Popen(['zcat', pjoin(curpath, 'text.gz')],
-                  stdout = PIPE, stderr = PIPE)
-        u = Popen(['zcat', pjoin(curpath, 'url.gz')],
-                  stdout = PIPE, stderr = PIPE)
-
-        # Each document in a line base64 encoded
-        # propagate url and collection for each document line
-        # tab-separated text compressed, splitted in batchs of SIZE
-        for i, doc in enumerate(p.stdout):
-            # read b64 encoded documents and their urls
-            try:
-                docurl = u.stdout.readline().strip() \
-                            .decode('utf-8', errors='strict')
-                lines = base64.b64decode(doc.strip()) \
-                            .decode('utf-8', errors='strict').split('\n')
-            except UnicodeDecodeError:
-                print("Unicode error in doc {i} collection {coll} w2t batch {dirnum}",
-                        file=sys.stderr)
-
-            # Print each document with its url and collection
-            for line in lines:
-                # batch completed, create new one
-                if n_chars >= args.size:
-                    batch += 1
-                    if ofp is not None:
-                        ofp.stdin.close()
-                        ofp.wait(timeout=60)
-                        os.rename(ofp_name, ofp_name.removesuffix('.tmp'))
-
-                    # Files are written to to temp, renamed when finished
-                    ofp_name = pjoin(args.output_dir,
-                                     args.lang, f'batch.{batch}.zst.tmp')
-                    ofp = Popen(['zstd', '-fo', ofp_name], encoding='utf-8',
-                                stdin=PIPE, stdout=PIPE, stderr=PIPE)
-                    n_chars = 0
-
-                if line:
-                    n_chars += len(line)
-                    try:
-                        ofp.stdin.write(f'{docurl}\t{line}\t{coll}\n')
-                    except BrokenPipeError:
-                        print(ofp.stdout.read())
-                        print(ofp.stderr.read())
-                        sys.exit(1)
-
-        # Check child decompressing processes ended well
-        # otherwise print their stderr messages for easier debugging
-        p.wait(timeout=60)
-        u.wait(timeout=60)
-        if p.returncode != 0 or u.returncode != 0:
-            print("#### text.gz stderr ####", file=sys.stderr)
-            print(p.stderr.read(), file=sys.stderr)
-            print("#### url.gz stderr ####", file=sys.stderr)
-            print(u.stderr.read(), file=sys.stderr)
-            if p.returncode == 124 or u.returncode == 124:
-                print("#### Command timed out ####", file=sys.stderr)
-            raise RuntimeError()
-
+    n_chars += len(line)
+    try:
+        ofp.stdin.write(line)
+    except BrokenPipeError:
+        print(ofp.stdout.read())
+        print(ofp.stderr.read())
+        sys.exit(1)
 
 if ofp:
     ofp.stdin.close()
