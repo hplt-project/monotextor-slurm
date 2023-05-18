@@ -20,15 +20,20 @@ set -euo pipefail
 L=$1
 COLLECTIONS=${@:2}
 
-compress_batch(){
+# Read the split output, compress it to temp, then move
+compress-batch(){
     local file=$1
+    # Remove 0s prefix, numbers need to be the same way as slurm array ids
     local name=$(echo $file | sed -E "s/\.0+/./g")
     zstd -T48 -10 >$name.zst.tmp
-    mv $name.tmp $name
+    mv $name.zst.tmp $name.zst
 }
+export -f compress-batch
 
+# Run one merge.py for each warc2text batch file
+# then re-split into batches of 10GB
 parallel -j 64 --will-cite python merge.py {} ::: $WARC2TEXT_DIR/*/*/$L \
 | split - \
     --numeric-suffixes=1 -a 8 -C 10G \
-    --filter='zstd -T48 -10 >$(echo $FILE | sed -E "s/\.0+/./g").zst' \
+    --filter='compress-batch $FILE' \
     $WORKSPACE/$L/batch.
