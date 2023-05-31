@@ -19,6 +19,7 @@ set -euo pipefail
 
 L=$1
 COLLECTIONS=${@:2}
+mkdir -p $WORKSPACE/$L
 
 # Read the split output, compress it to temp, then move
 compress-batch(){
@@ -32,7 +33,12 @@ export -f compress-batch
 
 # Run one merge.py for each warc2text batch file
 # then re-split into batches of 60GB
-parallel -j128 --will-cite python merge.py {} ::: $WARC2TEXT_DIR/*/*/$L \
+# --group avoids documents being separated
+# should be faster than --keep-order and
+# we do not need to keep order of the batches
+parallel -j64 --will-cite \
+    --compress --compress-program zstd --group \
+    python merge.py {} ::: $WARC2TEXT_DIR/*/*/$L \
 | split - \
     --numeric-suffixes=1 -a 8 -C 60G \
     --filter='compress-batch $FILE' \
