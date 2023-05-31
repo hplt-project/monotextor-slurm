@@ -19,7 +19,6 @@ JSONL=$WORKSPACE/$L/$L.raw.jsonl.zst
 TMPSFX=tmp_$SLURM_JOB_ID
 
 cat $WORKSPACE/$L/scored.[0-9]*.zst \
-| tee $RAW.$TMPSFX \
 | zstdcat \
 | python tsv2jsonl.py -l $L -c "url,text,collection,lang,score" \
 | zstdmt -10 -T2 >$JSONL.$TMPSFX \
@@ -28,5 +27,4 @@ cat $WORKSPACE/$L/scored.[0-9]*.zst \
     exit 1
 }
 
-mv $RAW.$TMPSFX $RAW
 mv $JSONL.$TMPSFX $JSONL
