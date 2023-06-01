@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH --job-name=merge-batching
-#SBATCH --partition="standard"
+#SBATCH --partition="small"
 #SBATCH --time=12:00:00
-##SBATCH --ntasks=1
-##SBATCH --cpus-per-task=8
-##SBATCH --mem-per-cpu=1750
-#SBATCH --nodes=1
-#SBATCH --ntasks=128
-#SBATCH --mem=0
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=64
+#SBATCH --mem-per-cpu=1750
+##SBATCH --nodes=1
+##SBATCH --ntasks=128
+##SBATCH --mem=0
 #SBATCH --output=logs/%x.out
 # Run batching python scripts that reads url.gz and text.gz
 # decodes base64 text and creates tsv zstd compressed batches
@@ -36,7 +36,7 @@ export -f compress-batch
 # --group avoids documents being separated
 # should be faster than --keep-order and
 # we do not need to keep order of the batches
-parallel -j64 --will-cite \
+parallel -j48 --will-cite \
     --compress --compress-program zstd --group \
     python merge.py {} ::: $WARC2TEXT_DIR/*/*/$L \
 | split - \
