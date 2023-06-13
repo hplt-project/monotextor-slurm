@@ -1,30 +1,29 @@
 #!/bin/bash
-#SBATCH --job-name=reduce
+#SBATCH --job-name=tsv2jsonl
 #SBATCH --partition="small"
-#SBATCH --time=06:00:00
+#SBATCH --time=12:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem-per-cpu=1750
 #SBATCH --output=logs/%x.out
-# Concatenate all the zstd batches
-# convert the concatenation to jsonl, write all zstd compressed
+# convert each batch to jsonl, write all zstd compressed
 module load cray-python/3.9.12.1
 set -euo pipefail
 shopt -s failglob
 source .env
 
 L=$1
-RAW=$WORKSPACE/$L/$L.raw.zst
-JSONL=$WORKSPACE/$L/$L.raw.jsonl.zst
+COLL=$2
 TMPSFX=tmp_$SLURM_JOB_ID
+INPUT=$WORKSPACE/$COLL/$L/scored.$SLURM_ARRAY_TASK_ID.zst
+OUTPUT=$WORKSPACE/$COLL/$L/scored.$SLURM_ARRAY_TASK_ID.jsonl.zst
 
-cat $WORKSPACE/$L/scored.[0-9]*.zst \
-| zstdcat \
+zstdcat $INPUT \
 | python tsv2jsonl.py -l $L -c "url,text,collection,lang,score" \
-| zstdmt -10 -T2 >$JSONL.$TMPSFX \
+| zstdmt -10 -T2 >$OUTPUT.$TMPSFX \
 || {
     echo "Error in pipeline: ${PIPESTATUS[@]}"
     exit 1
 }
 
-mv $JSONL.$TMPSFX $JSONL
+mv $OUTPUT.$TMPSFX $OUTPUT
