@@ -12,8 +12,9 @@ source .env
 set -euo pipefail
 
 L=$1
-INPUT=$WORKSPACE/$L/batch.$SLURM_ARRAY_TASK_ID.zst
-OUTPUT=$WORKSPACE/$L/scored.$SLURM_ARRAY_TASK_ID.zst
+COLL=$2
+INPUT=$WORKSPACE/$COLL/$L/batch.$SLURM_ARRAY_TASK_ID.zst
+OUTPUT=$WORKSPACE/$COLL/$L/scored.$SLURM_ARRAY_TASK_ID.zst
 MODEL=$MONOCLEANER_MODELS/$L
 
 processing(){
@@ -37,7 +38,7 @@ processing(){
 export -f processing
 
 zstdcat $INPUT \
-| parallel --pipe -k \
+| parallel --pipe --group \
     --halt now,fail=1 \
     -j128 --block 10M processing $L $MODEL \
 | zstdmt -T6 -10 \

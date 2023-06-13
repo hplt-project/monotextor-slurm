@@ -18,8 +18,10 @@ source .env
 set -euo pipefail
 
 L=$1
-COLLECTIONS=${@:2}
-mkdir -p $WORKSPACE/$L
+COLL=$2
+INPUT_DIR=${COLLECTIONS[$COLL]}
+OUTPUT_DIR=$WORKSPACE/$COLL/$L
+mkdir -p $OUTPUT_DIR
 
 # Read the split output, compress it to temp, then move
 compress-batch(){
@@ -43,8 +45,8 @@ export -f compress-batch
 # we do not need to keep order of the batches
 parallel -j48 --will-cite \
     --compress --compress-program zstd --group \
-    python merge.py {} ::: $WARC2TEXT_DIR/*/*/$L \
+    python merge.py -c $COLL {} ::: $INPUT_DIR/$L/*/* \
 | split - \
-    --numeric-suffixes=1 -a 8 -C 60G \
+    --numeric-suffixes=1 -a 8 -C 120G \
     --filter='compress-batch $FILE' \
-    $WORKSPACE/$L/batch.
+    $OUTPUT_DIR/batch.

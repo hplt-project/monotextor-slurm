@@ -8,10 +8,12 @@ set -euo pipefail
 
 L=$1
 INDEX=$2
+COLL=$3
+echo ${COLLECTIONS[$COLL]}
 
 if [ "$INDEX" == "all" ]; then
 # List all the batches that need to be processed (size of the job array)
-    INDEX=1-$(ls -1 $WORKSPACE/$L/batch.*.zst | sed -E 's#.*/batch\.([0-9]+)\.zst#\1#' | sort -n | tail -1)
+    INDEX=1-$(ls -1 $WORKSPACE/$COLL/$L/batch.*.zst | sed -E 's#.*/batch\.([0-9]+)\.zst#\1#' | sort -n | tail -1)
 elif [ "$INDEX" == "failed" ]; then
 # Select only failed jobs (timeout, oom and failed status)
     JOB=$3
@@ -26,5 +28,5 @@ fi
 # Run job array
 SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x-%A_%a.out" \
 sbatch --array=$INDEX \
-    -J $L-mono-processing \
-    --parsable 10.processing $L
+    -J $L-$COLL-mono-processing \
+    --parsable 10.processing $L $COLL

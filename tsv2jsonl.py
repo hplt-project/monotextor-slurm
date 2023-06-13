@@ -52,3 +52,6 @@ for line in sys.stdin:
                 jsonl[field].append(parts[i])
 
         prev_url = url
+
+if 'text' in jsonl:
+    print(orjson.dumps(jsonl).decode('utf-8'))

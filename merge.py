@@ -15,15 +15,14 @@ parser = ArgumentParser(description="Gather collection name, URL and text "
                         "\nFormat: url,paragraph,<paragraph_id>,collection")
 parser.add_argument('input_dir', type=str,
                     help='warc2text subdirectory where text.gz and url.gz re stored')
+parser.add_argument('-c', '--collection', required=True, type=str,
+                    help='Collection name where text comes from')
 args = parser.parse_args()
 
-dir_parts = args.input_dir.rstrip('/').split('/')
-coll = dir_parts[-3]
-dirnum = dir_parts[-2]
-print(f"Reading {coll}/{dirnum}", file=sys.stderr)
+print(f"Reading {args.input_dir}", file=sys.stderr)
 
 
-with gzip.open(pjoin(args.input_dir, 'text.gz'), 'rb') as p, \
+with gzip.open(pjoin(args.input_dir, 'plain_text.gz'), 'rb') as p, \
         gzip.open(pjoin(args.input_dir, 'url.gz'), 'rb') as u:
 
     # Each document in a line base64 encoded
@@ -46,6 +45,7 @@ with gzip.open(pjoin(args.input_dir, 'text.gz'), 'rb') as p, \
         for line in lines:
             if line:
                 printed = True
-                print(f'{docurl}\t{line}\t{coll}', end='\b')
+                line = line.replace('\b', '')
+                print(f'{docurl}\t{line}\t{args.collection}', end='\b')
         if printed:
             print("")
