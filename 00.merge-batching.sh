@@ -15,4 +15,4 @@ mkdir -p $SLURM_LOGS_DIR
 echo ${COLLECTIONS[$COLL]}
 
 SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x.out" \
-sbatch -J $L-merge-batching --parsable 00.merge-batching $L $COLL
+sbatch -J $L-$COLL-merge-batching --parsable 00.merge-batching $L $COLL
