@@ -26,7 +26,14 @@ elif [ "$INDEX" == "failed" ]; then
 fi
 
 # Run job array
+jobid=$(
 SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x-%A_%a.out" \
 sbatch --array=$INDEX \
     -J $L-$COLL-mono-processing \
     --parsable 10.processing $L $COLL
+)
+echo Submitted $jobid
+
+SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x.out" \
+sbatch --array=$INDEX -d afterok:$jobid \
+    -J $L-$COLL-tsv2jsonl 10.tsv2jsonl $L $COLL

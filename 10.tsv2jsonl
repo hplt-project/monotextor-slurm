@@ -19,7 +19,7 @@ INPUT=$WORKSPACE/$COLL/$L/scored.$SLURM_ARRAY_TASK_ID.zst
 OUTPUT=$WORKSPACE/$COLL/$L/scored.$SLURM_ARRAY_TASK_ID.jsonl.zst
 
 zstdcat $INPUT \
-| python tsv2jsonl.py -l $L -c "url,text,collection,lang,score" \
+| python tsv2jsonl.py -l $L -c "url,text,collection,lang,monocleaner_score" \
 | zstdmt -10 -T2 >$OUTPUT.$TMPSFX \
 || {
     echo "Error in pipeline: ${PIPESTATUS[@]}"
@@ -27,3 +27,4 @@ zstdcat $INPUT \
 }
 
 mv $OUTPUT.$TMPSFX $OUTPUT
+rm $INPUT # Remove scored tsv intermediate file to save inodes
