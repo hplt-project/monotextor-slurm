@@ -41,6 +41,11 @@ with gzip.open(pjoin(args.input_dir, 'text.gz'), 'rb') as p, \
                     file=sys.stderr)
 
         # Print each document with its url and collection
+        # use \b to keep document in one line (will be repalced by \n afterwards)
+        printed = False
         for line in lines:
             if line:
-                print(f'{docurl}\t{line}\t{coll}')
+                printed = True
+                print(f'{docurl}\t{line}\t{coll}', end='\b')
+        if printed:
+            print("")

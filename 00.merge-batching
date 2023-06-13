@@ -26,7 +26,12 @@ compress-batch(){
     local file=$1
     # Remove 0s prefix, numbers need to be the same way as slurm array ids
     local name=$(echo $file | sed -E "s/\.0+/./g")
-    zstd -T64 -10 >$name.zst.tmp
+
+    # Remove \b that keeps doc boundaries
+    # then compress
+    tr '\b' '\n'  | tr -s '\n' \
+    | zstd -T64 -10 >$name.zst.tmp
+
     mv $name.zst.tmp $name.zst
 }
 export -f compress-batch
