@@ -18,6 +18,8 @@ url2
 Right now, the first step of the pipeline expects input directory structure sharded with [giashard](https://github.com/paracrawl/giashard), but any other structure can be used changing the [00.merge-batching](https://github.com/hplt-project/monotextor-slurm/blob/2dc38e1b822b69f5405fa753aa1fb9065ac8201a/00.merge-batching#L48) listing of directories.
 As far as each process in `parallel` receives a directory containing the files above mentioned.
 
+Current directory pattern expected is `$COLLECTION/$shard/$batch/{plain_text,url}.gz`.
+
 After creating the TSV, files are divided again into batches of similar size and balance the scheduling and parallelization of the processing step.
 
 ### Processing
@@ -109,4 +111,4 @@ For example, the resulting JSON of the text above showed will be something like:
     ...
 ```
 In each document, each paragraph is concatenated using new-line separators.
-`lang` and `monocleaner_score` are lists containing one entry per paragraph, correspongind to the language identified and monocleaner score of each one.
+`lang` and `monocleaner_score` are lists containing one entry per paragraph, corresponding to the language identified and monocleaner score of each one.
