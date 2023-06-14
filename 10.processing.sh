@@ -16,6 +16,7 @@ if [ "$INDEX" == "all" ]; then
     INDEX=1-$(ls -1 $WORKSPACE/$COLL/$L/batch.*.zst | sed -E 's#.*/batch\.([0-9]+)\.zst#\1#' | sort -n | tail -1)
 elif [ "$INDEX" == "failed" ]; then
 # Select only failed jobs (timeout, oom and failed status)
+# Create a list of batch id's separated by comma
     JOB=$3
     INDEX=$(
         sacct -j $JOB --parsable -s oom,f,to -n \
@@ -25,7 +26,7 @@ elif [ "$INDEX" == "failed" ]; then
     )
 fi
 
-# Run job array
+# Run job array of processing
 jobid=$(
 SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x-%A_%a.out" \
 sbatch --array=$INDEX \
@@ -34,6 +35,7 @@ sbatch --array=$INDEX \
 )
 echo Submitted $jobid
 
+# Submit job array of jsonl conversion
 SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x.out" \
 sbatch --array=$INDEX -d afterok:$jobid \
     -J $L-$COLL-tsv2jsonl 10.tsv2jsonl $L $COLL

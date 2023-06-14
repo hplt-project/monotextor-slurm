@@ -18,6 +18,7 @@ TMPSFX=tmp_$SLURM_JOB_ID
 INPUT=$WORKSPACE/$COLL/$L/scored.$SLURM_ARRAY_TASK_ID.zst
 OUTPUT=$WORKSPACE/$COLL/$L/scored.$SLURM_ARRAY_TASK_ID.jsonl.zst
 
+# build JSON objects, one JSON one document per line
 zstdcat $INPUT \
 | python tsv2jsonl.py -l $L -c "url,text,collection,lang,monocleaner_score" \
 | zstdmt -10 -T2 >$OUTPUT.$TMPSFX \
