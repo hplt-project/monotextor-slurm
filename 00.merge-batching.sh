@@ -12,7 +12,7 @@ set -euo pipefail
 L=$1
 COLL=$2
 mkdir -p $SLURM_LOGS_DIR
-echo ${COLLECTIONS[$COLL]}
+echo ${COLLECTIONS[$COLL]}/$L
 
 SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x.out" \
 sbatch -J $L-$COLL-merge-batching --parsable 00.merge-batching $L $COLL

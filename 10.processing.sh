@@ -9,7 +9,7 @@ set -euo pipefail
 L=$1
 INDEX=$2
 COLL=$3
-echo ${COLLECTIONS[$COLL]}
+echo ${COLLECTIONS[$COLL]}/$L
 
 if [ "$INDEX" == "all" ]; then
 # List all the batches that need to be processed (size of the job array)
