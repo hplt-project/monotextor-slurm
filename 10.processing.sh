@@ -26,6 +26,10 @@ elif [ "$INDEX" == "failed" ]; then
     )
 fi
 
+echo "Submitting job array of $INDEX"
+read -p "Confirm? [y/n] " -n 1 -r
+if [[ ! $REPLY =~ [Yy] ]]; then echo; exit 1; fi
+
 # Run job array of processing
 jobid=$(
 SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x-%A_%a.out" \
