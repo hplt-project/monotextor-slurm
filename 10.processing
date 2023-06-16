@@ -40,8 +40,8 @@ export -f processing
 zstdcat $INPUT \
 | parallel --pipe --group \
     --halt now,fail=1 \
-    -j128 --block 10M processing $L $MODEL \
-| zstdmt -T6 -10 \
+    -j180 --block 10M processing $L $MODEL \
+| zstdmt -T64 -10 \
 > $OUTPUT.tmp_$SLURM_ARRAY_JOB_ID \
 
 
