@@ -38,7 +38,7 @@ processing(){
 export -f processing
 
 zstdcat $INPUT \
-| parallel --pipe --group \
+| parallel --pipe -k \
     --halt now,fail=1 \
     -j180 --block 10M processing $L $MODEL \
 | zstdmt -T64 -10 \
