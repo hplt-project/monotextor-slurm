@@ -20,7 +20,7 @@ OUTPUT=$WORKSPACE/$COLL/$L/scored.$SLURM_ARRAY_TASK_ID.jsonl.zst
 
 # build JSON objects, one JSON one document per line
 zstdcat $INPUT \
-| python tsv2jsonl.py -l $L -c "url,text,collection,lang,monocleaner_score" \
+| tsv2jsonl -l $L \
 | zstdmt -10 -T2 >$OUTPUT.$TMPSFX \
 || {
     echo "Error in pipeline: ${PIPESTATUS[@]}"

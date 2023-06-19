@@ -44,6 +44,13 @@ Install requirements inside your virtual environment.
 pip install -r requirements.txt
 ```
 
+Install Rust utils:
+```
+cargo install --root path/to/venv --path utils/
+```
+root directory to be installed can be any directory containing a `bin` directory and make sure it is in `PATH`.
+For example another path could be `$HOME/.local` and in that case, add `$HOME/.local/bin` to `PATH` in the configuration below.
+
 ## Configure
 Copy the `.env.example` to `.env` and edit the variables accordingly.
 Needed variables are:
@@ -52,7 +59,7 @@ SBATCH_ACCOUNT          Project account number.
 SLURM_LOGS_DIR          Directory where all the job logs will be stored.
 WORKSPACE               Directory where all the processing output will be stored.
 MONOCLEANER_MODELS      Directory containing monocleaner models.
-PYTHONUSERBASE          Path to the bin directory of Python environment.
+PYTHONUSERBASE          Path to the bin directory of Python environment and Rust utils.
 PATH                    Add PYTHONUSERBASE to the PATH.
 PYTHONPATH              site-packages path to the Python environment.
 COLLECTIONS             Associative array with collection names and paths.
