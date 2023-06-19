@@ -3,6 +3,13 @@ data/
 logs/
 *.swp
 
+# Cargo generated files
+utils/target
+utils/debug
+
+# Ignore Cargo.lock as we are building end binaries
+utils/Cargo.lock
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
