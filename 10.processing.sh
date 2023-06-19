@@ -10,6 +10,11 @@ L=$1
 INDEX=$2
 COLL=$3
 echo ${COLLECTIONS[$COLL]}/$L
+if [[ $# -eq 4 ]] && [[ $4 =~ "tsv2json" ]]; then
+    ONLY_TSV2JSON="true"
+else
+    ONLY_TSV2JSON=""
+fi
 
 if [ "$INDEX" == "all" ]; then
 # List all the batches that need to be processed (size of the job array)
@@ -29,17 +34,22 @@ fi
 echo "Submitting job array of $INDEX"
 read -p "Confirm? [y/n] " -n 1 -r
 if [[ ! $REPLY =~ [Yy] ]]; then echo; exit 1; fi
+echo
 
-# Run job array of processing
-jobid=$(
-SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x-%A_%a.out" \
-sbatch --array=$INDEX \
-    -J $L-$COLL-mono-processing \
-    --parsable 10.processing $L $COLL
-)
-echo Submitted $jobid
+DEP=""
+if [[ -z $ONLY_TSV2JSON ]]; then
+    # Run job array of processing
+    jobid=$(
+    SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x-%A_%a.out" \
+    sbatch --array=$INDEX \
+        -J $L-$COLL-mono-processing \
+        --parsable 10.processing $L $COLL
+    )
+    echo Submitted $jobid
+    DEP="-d afterok:$jobid"
+fi
 
 # Submit job array of jsonl conversion
 SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x.out" \
-sbatch --array=$INDEX -d afterok:$jobid \
+sbatch --array=$INDEX $DEP \
     -J $L-$COLL-tsv2jsonl 10.tsv2jsonl $L $COLL
