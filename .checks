@@ -2,3 +2,4 @@
 [[ ${SLURM_LOGS_DIR-} ]] || { echo "\$SLURM_LOGS_DIR has to be defined in .env"; exit 1; }
 [[ ${WORKSPACE-} ]] || { echo "\$WORKSPACE has to be defined in .env"; exit 1; }
 [[ ${MONOCLEANER_MODELS-} ]] || { echo "\$MONOCLEANER_MODELS has to be defined in .env"; exit 1; }
+[[ ${FLASH_TMP-} ]] || { echo "\$FLASH_TMP has to be defined in .env"; exit 1; }

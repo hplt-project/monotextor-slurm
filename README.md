@@ -59,6 +59,7 @@ SBATCH_ACCOUNT          Project account number.
 SLURM_LOGS_DIR          Directory where all the job logs will be stored.
 WORKSPACE               Directory where all the processing output will be stored.
 MONOCLEANER_MODELS      Directory containing monocleaner models.
+FLASH_TMP               Temporary directory for merge-batch parallel step (recommended flash storage partition).
 PYTHONUSERBASE          Path to the bin directory of Python environment and Rust utils.
 PATH                    Add PYTHONUSERBASE to the PATH.
 PYTHONPATH              site-packages path to the Python environment.
