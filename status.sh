@@ -6,7 +6,7 @@ source .checks
 L=$1
 
 colls=${!COLLECTIONS[@]}
-#echo $colls | tr ' ' '\t'
+colls=$(echo $colls | tr ' ' '\n' | sort)
 for c in $colls; do
     if [[ $c =~ sample ]]; then continue; fi
 
