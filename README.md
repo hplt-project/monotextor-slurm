@@ -104,6 +104,11 @@ or run a subset of all the batches (e.g. because of scheduling restriction does 
 ./10.processing.sh bg 45-118 wide17
 ```
 
+### Retrying
+The proecessing script also takes care of waiting and retrying submit if a submission fails due to `AssocMaxSubmitJobLimit` error.
+In that case the script proces will wait indefinetly until it's able to submit all the remaining jobs.
+Also, in case of the job array index being larger than the limit (currently 120), it will submit them in groups of 60.
+
 
 ## Output format
 The output format is JSONL, where each line is a valid JSON value and a full document with all its metadata.
