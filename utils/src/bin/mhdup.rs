@@ -1,6 +1,5 @@
 use std::io::{BufRead, BufReader};
 use std::fs::File;
-use serde::{Deserialize, Serialize};
 use itertools::Itertools;
 use rayon::prelude::*;
 use gaoya::minhash::{
@@ -14,6 +13,8 @@ use fnv::FnvBuildHasher;
 use serde_json::Result;
 use clap::Parser;
 
+use monotextor_utils::{Document, DocumentText, TextField};
+
 #[derive(Parser)]
 #[clap(version)]
 struct Args{
@@ -21,12 +22,6 @@ struct Args{
     batch_size: usize,
 
     files: Vec<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct DocumentText {
-    // Parse documents ignoring all fields but "text"
-    text: String,
 }
 
 
