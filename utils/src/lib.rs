@@ -49,7 +49,7 @@ impl TextField for Document {
 #[derive(Deserialize, Serialize)]
 pub struct DocumentText {
     // Parse documents ignoring all fields but "text"
-    text: String,
+    pub text: String,
 }
 
 impl TextField for DocumentText {
