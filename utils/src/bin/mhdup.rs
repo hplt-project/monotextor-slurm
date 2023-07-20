@@ -30,7 +30,7 @@ struct Args{
     tokenization: Tokenization,
 
     #[clap(long, short, default_value_t=0.8, help="Jaccard similarity threshold.")]
-    jaccard_threshold: f32,
+    jaccard_threshold: f64,
     #[clap(long, short, default_value_t=260,
            help="Number of permutations, a.k.a number of hashes.")]
     permutations: usize,
@@ -38,6 +38,10 @@ struct Args{
     //num_bands: usize,
     //#[clap(long, required=false, help="Band width. If provided, permutations will be ignored.")]
     //band_width: usize,
+
+    #[clap(long, short, required=false, takes_value=false,
+           help="Print MinHash parameters and finish.")]
+    dry_run: bool,
 
     #[clap(help="zstd compressed jsonl files to be indexed.")]
     files: Vec<String>,
@@ -113,17 +117,21 @@ fn main() -> Result<()> {
     //let mut writer = io::stdout().lock();
 
     // Create MinHash index and hasher objects
-    let num_hashes = args.permutations;
-    let jaccard_threshold = 0.8;
-    let (num_bands, band_width) = calculate_minhash_params(jaccard_threshold, num_hashes);
+    let (num_bands, band_width) = calculate_minhash_params(
+        args.jaccard_threshold, args.permutations
+    );
     let hasher = MinHasher32::new(num_bands * band_width);
     let mut index:
         MinHashIndex<u32, usize, HashSetContainer<usize>> =
     {
-        MinHashIndex::new_index(num_bands, band_width, jaccard_threshold, args.band_id)
+        MinHashIndex::new_index(num_bands, band_width, args.jaccard_threshold, args.band_id)
     };
     let mut dup_ids = HashSet::<usize>::new();
     eprintln!("Num bands: {}\nBand width: {}\nIndexing band num: {}", num_bands, band_width, args.band_id);
+    if args.dry_run {
+        // With dry run, print params and exit
+        return Ok(())
+    }
 
     // Read, deserialize, hash and index each file
     let mut global_id = 0; // document id
