@@ -12,17 +12,41 @@ use zstd::stream::read::Decoder;
 use gaoya::text::whitespace_split;
 use fnv::FnvBuildHasher;
 use serde_json::Result;
-use clap::Parser;
+use clap::{Parser, ArgEnum};
 
 use monotextor_utils::{DocumentText};
 
 #[derive(Parser)]
 #[clap(version)]
 struct Args{
-    #[clap(long, short, default_value_t=2000)]
+    #[clap(long, default_value_t=10000,
+           help="Number of lines to be processed at a time")]
     batch_size: usize,
+    #[clap(long, short, default_value_t=-1,
+           help="Band to be indexed. Values from 0 to band_size-1. If none specified, index all.")]
+    band_id: isize,
+    #[clap(arg_enum, long, short, default_value="word",
+           help="Tokenization type.")]
+    tokenization: Tokenization,
 
+    #[clap(long, short, default_value_t=0.8, help="Jaccard similarity threshold.")]
+    jaccard_threshold: f32,
+    #[clap(long, short, default_value_t=260,
+           help="Number of permutations, a.k.a number of hashes.")]
+    permutations: usize,
+    //#[clap(long, required=false, help="Number of bands. If provided, permutations will be ignored.")]
+    //num_bands: usize,
+    //#[clap(long, required=false, help="Band width. If provided, permutations will be ignored.")]
+    //band_width: usize,
+
+    #[clap(help="zstd compressed jsonl files to be indexed.")]
     files: Vec<String>,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum)]
+enum Tokenization {
+    Word,
+    Char,
 }
 
 
@@ -89,16 +113,17 @@ fn main() -> Result<()> {
     //let mut writer = io::stdout().lock();
 
     // Create MinHash index and hasher objects
-    let num_hashes = 250;
+    let num_hashes = args.permutations;
     let jaccard_threshold = 0.8;
     let (num_bands, band_width) = calculate_minhash_params(jaccard_threshold, num_hashes);
     let hasher = MinHasher32::new(num_bands * band_width);
     let mut index:
         MinHashIndex<u32, usize, HashSetContainer<usize>> =
     {
-        MinHashIndex::new_index(num_bands, band_width, jaccard_threshold, -1)
+        MinHashIndex::new_index(num_bands, band_width, jaccard_threshold, args.band_id)
     };
     let mut dup_ids = HashSet::<usize>::new();
+    eprintln!("Num bands: {}\nBand width: {}\nIndexing band num: {}", num_bands, band_width, args.band_id);
 
     // Read, deserialize, hash and index each file
     let mut global_id = 0; // document id
