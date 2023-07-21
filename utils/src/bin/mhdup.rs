@@ -54,17 +54,38 @@ enum Tokenization {
 }
 
 
+// Print a list of index queries
+fn print_queries(sorter: &mut Vec<usize>, queries: &Vec<HashSet<usize>>) {
+    for q in queries {
+        // Sort the query before printing, use a buffer for faster sorting
+        sorter.clear();
+        for elem in q { sorter.push(*elem); }
+        sorter.sort();
+
+        // Print each element of the query separated by space
+        for (i, elem) in sorter.iter().enumerate() {
+            print!("{}", elem);
+            if i == q.len() - 1 {
+                println!("")
+            } else {
+                print!(" ");
+            }
+        }
+    }
+}
+
 // Read one file, parse, hash and insert each document in the index
 fn index_file(filename: &String, global_id: &mut usize, batch_size: usize,
               index: &mut MinHashIndex<u32, usize, HashSetContainer<usize>>,
               hasher: &MinHasher32<FnvBuildHasher>,
-              query: bool, dup_ids: &mut HashSet<usize>) {
+              query: bool) {
 
     // read zstd compressed input, iterate in chunks
     let file = File::open(filename).unwrap();
     let decoder = Decoder::new(file).unwrap();
     let chunks = &BufReader::new(decoder).lines().chunks(batch_size);
     let mut batched_lines = chunks.into_iter();
+    let mut sorter = Vec::<usize>::new();
 
     // Read and process input in batches
     while let Some(chunk) = batched_lines.next() {
@@ -96,16 +117,7 @@ fn index_file(filename: &String, global_id: &mut usize, batch_size: usize,
             index.par_bulk_insert(ids, signatures);
         } else {
             let queries = index.par_bulk_query(&signatures);
-            for (i, (q, gid)) in queries.iter().zip(ids).enumerate() {
-                if dup_ids.contains(&gid) {
-                    println!("{}", docs[i].text.replace("\n", "  "));
-                }
-                for elem in q {
-                    if *elem != gid {
-                        dup_ids.insert(*elem);
-                    }
-                }
-            }
+            print_queries(&mut sorter, &queries);
         }
         *global_id = new_id;
     }
@@ -126,7 +138,6 @@ fn main() -> Result<()> {
     {
         MinHashIndex::new_index(num_bands, band_width, args.jaccard_threshold, args.band_id)
     };
-    let mut dup_ids = HashSet::<usize>::new();
     eprintln!("Num bands: {}\nBand width: {}\nIndexing band num: {}", num_bands, band_width, args.band_id);
     if args.dry_run {
         // With dry run, print params and exit
@@ -136,13 +147,13 @@ fn main() -> Result<()> {
     // Read, deserialize, hash and index each file
     let mut global_id = 0; // document id
     for file in &args.files {
-        index_file(file, &mut global_id, args.batch_size, &mut index, &hasher, false, &mut dup_ids);
+        index_file(file, &mut global_id, args.batch_size, &mut index, &hasher, false);
     }
 
     // start reading again, this time we query each document
     let mut global_id = 0;
     for file in &args.files {
-        index_file(file, &mut global_id, args.batch_size, &mut index, &hasher, true, &mut dup_ids);
+        index_file(file, &mut global_id, args.batch_size, &mut index, &hasher, true);
     }
 
     Ok(())
