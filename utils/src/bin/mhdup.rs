@@ -13,6 +13,8 @@ use gaoya::text::whitespace_split;
 use fnv::FnvBuildHasher;
 use serde_json::Result;
 use clap::{Parser, ArgEnum};
+use env_logger::Env;
+use log::info;
 
 use monotextor_utils::{DocumentText};
 
@@ -124,6 +126,7 @@ fn index_file(filename: &String, global_id: &mut usize, batch_size: usize,
 
 
 fn main() -> Result<()> {
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     let args = Args::parse();
     //let mut writer = io::stdout().lock();
 
@@ -137,18 +140,24 @@ fn main() -> Result<()> {
     {
         MinHashIndex::new_index(num_bands, band_width, args.jaccard_threshold, args.band_id)
     };
-    eprintln!("Num bands: {}\nBand width: {}\nIndexing band num: {}", num_bands, band_width, args.band_id);
+    info!("Num bands: {}", num_bands);
+    info!("Band width: {}", band_width);
+    info!("Indexing band num: {}", args.band_id);
     if args.dry_run {
         // With dry run, print params and exit
+        info!("Finished");
         return Ok(())
     }
 
+    info!("Indexing documents");
     // Read, deserialize, hash and index each file
     let mut global_id = 0; // document id
     for file in &args.files {
         index_file(file, &mut global_id, args.batch_size, &mut index, &hasher, false);
     }
+    info!("Indexed {} documents", global_id);
 
+    info!("Querying documents");
     // start reading again, this time we query each document
     println!("{}", global_id + 1);
     let mut global_id = 0;
@@ -156,5 +165,6 @@ fn main() -> Result<()> {
         index_file(file, &mut global_id, args.batch_size, &mut index, &hasher, true);
     }
 
+    info!("Finished");
     Ok(())
 }

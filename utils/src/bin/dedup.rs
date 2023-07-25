@@ -1,18 +1,32 @@
-use std::io::{stdin, BufRead, Result};
+use std::io::{BufRead, BufReader, Result};
 use std::collections::HashSet;
-use log::info;
+use std::fs::File;
+use zstd::stream::read::Decoder;
+use clap::Parser;
 use env_logger::Env;
+use log::info;
 
 use monotextor_utils::UnionFind;
 
+#[derive(Parser)]
+#[clap(version)]
+struct Args{
+    #[clap(help="File containg the queries from the index.")]
+    queryfile: String,
+    #[clap(help="zstd compressed jsonl files to be filtered.")]
+    files: Vec<String>,
+}
 
 fn main() -> Result<()> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
-    let mut reader = stdin().lock();
+    let args = Args::parse();
+    let file = File::open(args.queryfile).unwrap();
+    let decoder = Decoder::new(file).unwrap();
+    let mut reader = BufReader::new(decoder);
 
     // Read header containing the number of records
     let mut line = String::new();
-    let _ = reader.read_line(&mut line);
+    reader.read_line(&mut line).unwrap();
     line.pop();
     let parts: Vec<&str> = line.split(&[' ', '\t']).collect();
     let num_records: usize = parts[0].parse().expect(format!("Could not parse {}", parts[0]).as_str());
@@ -50,5 +64,7 @@ fn main() -> Result<()> {
 
     info!("Reading documents and discarding duplicates");
 
+
+    info!("Finished");
     Ok(())
 }
