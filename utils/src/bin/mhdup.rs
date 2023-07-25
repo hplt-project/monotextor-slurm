@@ -65,12 +65,11 @@ fn print_queries(sorter: &mut Vec<usize>, queries: &Vec<HashSet<usize>>) {
         // Print each element of the query separated by space
         for (i, elem) in sorter.iter().enumerate() {
             print!("{}", elem);
-            if i == q.len() - 1 {
-                println!("")
-            } else {
+            if i != q.len() - 1 {
                 print!(" ");
             }
         }
+        println!("");
     }
 }
 
@@ -151,6 +150,7 @@ fn main() -> Result<()> {
     }
 
     // start reading again, this time we query each document
+    println!("{}", global_id + 1);
     let mut global_id = 0;
     for file in &args.files {
         index_file(file, &mut global_id, args.batch_size, &mut index, &hasher, true);
