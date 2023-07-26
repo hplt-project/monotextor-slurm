@@ -1,5 +1,6 @@
 use std::io::{BufRead, BufReader};
 use std::collections::HashSet;
+use std::time::Instant;
 use std::fs::File;
 use itertools::Itertools;
 use rayon::prelude::*;
@@ -128,7 +129,7 @@ fn index_file(filename: &String, global_id: &mut usize, batch_size: usize,
 fn main() -> Result<()> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     let args = Args::parse();
-    //let mut writer = io::stdout().lock();
+    let now = Instant::now();
 
     // Create MinHash index and hasher objects
     let (num_bands, band_width) = calculate_minhash_params(
@@ -166,6 +167,7 @@ fn main() -> Result<()> {
     }
     info!("Queried {} documents", global_id);
 
+    info!("Elapsed time: {} s", now.elapsed().as_secs());
     info!("Finished");
     Ok(())
 }

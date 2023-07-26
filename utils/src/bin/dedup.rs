@@ -1,5 +1,6 @@
 use std::io::{BufRead, BufReader, Result};
 use std::collections::HashSet;
+use std::time::Instant;
 use std::fs::File;
 use zstd::stream::read::Decoder;
 use clap::Parser;
@@ -19,6 +20,7 @@ struct Args{
 
 fn main() -> Result<()> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+    let now = Instant::now();
     let args = Args::parse();
     let file = File::open(args.queryfile).unwrap();
     let decoder = Decoder::new(file).unwrap();
@@ -65,6 +67,7 @@ fn main() -> Result<()> {
     info!("Reading documents and discarding duplicates");
 
 
+    info!("Elapsed time: {} s", now.elapsed().as_secs());
     info!("Finished");
     Ok(())
 }
