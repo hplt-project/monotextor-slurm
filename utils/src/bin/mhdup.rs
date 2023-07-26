@@ -21,7 +21,7 @@ use monotextor_utils::{DocumentText};
 #[derive(Parser)]
 #[clap(version)]
 struct Args{
-    #[clap(long, default_value_t=10000,
+    #[clap(long, default_value_t=20000,
            help="Number of lines to be processed at a time")]
     batch_size: usize,
     #[clap(long, short, default_value_t=-1,
@@ -102,7 +102,7 @@ fn index_file(filename: &String, global_id: &mut usize, batch_size: usize,
             }).collect();
 
         // hash documents in parallel
-        let signatures = docs.par_iter()
+        let signatures: Vec<_> = docs.par_iter()
             .map(|doc| {
                 hasher.create_signature(
                     whitespace_split(&doc.text.to_lowercase())
@@ -110,7 +110,7 @@ fn index_file(filename: &String, global_id: &mut usize, batch_size: usize,
             }).collect();
 
         // Enumerate all the documents, global id's
-        let new_id = *global_id + docs.len() - 1;
+        let new_id = *global_id + docs.len();
         let ids: Vec<usize> = (*global_id..new_id).collect();
 
         if !query {
@@ -142,7 +142,7 @@ fn main() -> Result<()> {
     };
     info!("Num bands: {}", num_bands);
     info!("Band width: {}", band_width);
-    info!("Indexing band num: {}", args.band_id);
+    info!("Indexed band num: {}", args.band_id);
     if args.dry_run {
         // With dry run, print params and exit
         info!("Finished");
@@ -164,6 +164,7 @@ fn main() -> Result<()> {
     for file in &args.files {
         index_file(file, &mut global_id, args.batch_size, &mut index, &hasher, true);
     }
+    info!("Queried {} documents", global_id);
 
     info!("Finished");
     Ok(())
