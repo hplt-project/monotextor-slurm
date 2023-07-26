@@ -61,7 +61,6 @@ submit-retry (){
     err_msg=$(mktemp); trap "rm $err_msg" EXIT
 
     local jobid=$(submit-processing $index 2>$err_msg)
-    echo "" >&2
     # Keep trying to submit until job limit is over
     # or any other error is obtained
     while grep -q "AssocMaxSubmitJobLimit" $err_msg; do
