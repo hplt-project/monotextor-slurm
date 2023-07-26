@@ -5,17 +5,53 @@ use std::fs::File;
 use zstd::stream::read::Decoder;
 use clap::Parser;
 use env_logger::Env;
-use log::info;
+use log::{info,debug};
+use regex::Regex;
 
 use monotextor_utils::UnionFind;
 
 #[derive(Parser)]
 #[clap(version)]
 struct Args{
+    #[clap(short, long, required=false, takes_value=false,
+           help="Print discarded duplicates, instead of non-discarded.")]
+    duplicates: bool,
+
     #[clap(help="File containg the queries from the index.")]
     queryfile: String,
     #[clap(help="zstd compressed jsonl files to be filtered.")]
     files: Vec<String>,
+}
+
+
+fn filter_dups(filename: &String, parents: &Vec<usize>, regex_id: &Regex, duplicates: bool){
+    let file = File::open(filename).unwrap();
+    let decoder = Decoder::new(file).unwrap();
+    let reader = BufReader::new(decoder);
+    let mut readed = 0_usize;
+
+    for (i, line_result) in reader.lines().enumerate() {
+        let mut line = line_result.unwrap();
+
+        // Discard every document that it is not its own parent
+        // That way, we keep documents that do not have known duplicates
+        // and one from each set of duplicates (the uppermost parent)
+        if duplicates {
+            if parents[i] != i {
+                println!("{}", line);
+            }
+            continue;
+        } else if parents[i] != i {
+            continue;
+        }
+        readed += 1;
+
+        // Re-assign new document id with regex, id always at the beggining, no need to parse the
+        // whole json
+        line = regex_id.replace(&line, format!("{{\"id\":{},", readed)).to_string();
+        println!("{}", line);
+    }
+
 }
 
 fn main() -> Result<()> {
@@ -61,11 +97,13 @@ fn main() -> Result<()> {
 
         uniq.clear();
     }
+    debug!("Parents array: {:?}", uf.parents);
 
-    println!("{:?}", uf.parents);
-
+    let regex_id = Regex::new(r#"^\{"id":[0-9]+,"#).unwrap();
     info!("Reading documents and discarding duplicates");
-
+    for f in &args.files {
+        filter_dups(f, &uf.parents, &regex_id, args.duplicates);
+    }
 
     info!("Elapsed time: {} s", now.elapsed().as_secs());
     info!("Finished");
