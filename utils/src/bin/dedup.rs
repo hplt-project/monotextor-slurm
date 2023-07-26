@@ -11,7 +11,9 @@ use regex::Regex;
 use monotextor_utils::UnionFind;
 
 #[derive(Parser)]
-#[clap(version)]
+#[clap(version, about="Deduplicate a set of JSONL documents using index queries. \
+                       Non-duplicates and one document per duplicates vluster will be kept. \
+                       Document id's of kept documents will be re-assigned.")]
 struct Args{
     #[clap(short, long, required=false, takes_value=false,
            help="Print discarded duplicates, instead of non-discarded.")]

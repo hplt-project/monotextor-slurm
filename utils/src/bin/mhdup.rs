@@ -20,7 +20,8 @@ use log::info;
 use monotextor_utils::{DocumentText};
 
 #[derive(Parser)]
-#[clap(version)]
+#[clap(version, about="Index a set of documents in JSONL format. \
+                       Then return the queries of each document agains all the index.")]
 struct Args{
     #[clap(long, default_value_t=20000,
            help="Number of lines to be processed at a time")]

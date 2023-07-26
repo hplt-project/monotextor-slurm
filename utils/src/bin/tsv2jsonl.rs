@@ -5,7 +5,7 @@ use clap::Parser;
 use monotextor_utils::Document;
 
 #[derive(Parser)]
-#[clap(author, version, about, long_about = None)]
+#[clap(author, version, about="Convert TSV format to JSONL documents", long_about = None)]
 struct Args {
     #[clap(short, long)]
     language: String,
