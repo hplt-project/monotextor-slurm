@@ -39,6 +39,10 @@ compress-batch(){
     # Remove 0s prefix, numbers need to be the same way as slurm array ids
     local name=$(echo $file | sed -E "s/\.0+/./g")
 
+    # jump over to a ceertain batch if previous ran out of time
+    #local number=${name#*batch.}
+    #if [ $((number)) -lt 940 ]; then return 0; fi
+
     # Remove \b that keeps doc boundaries
     # then compress
     tr '\b' '\n'  | tr -s '\n' \
