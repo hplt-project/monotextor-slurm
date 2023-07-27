@@ -114,6 +114,7 @@ fn index_file(filename: &String, global_id: &mut usize, batch_size: usize,
         // Enumerate all the documents, global id's
         let new_id = *global_id + docs.len();
         let ids: Vec<usize> = (*global_id..new_id).collect();
+        drop(docs);
 
         if !query {
             // insert into index in parallel
