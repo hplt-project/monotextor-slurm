@@ -59,15 +59,10 @@ enum Tokenization {
 
 
 // Print a list of index queries
-fn print_queries(sorter: &mut Vec<usize>, queries: &Vec<HashSet<usize>>) {
+fn print_queries(queries: &Vec<HashSet<usize>>) {
     for q in queries {
-        // Sort the query before printing, use a buffer for faster sorting
-        sorter.clear();
-        for elem in q { sorter.push(*elem); }
-        sorter.sort();
-
         // Print each element of the query separated by space
-        for (i, elem) in sorter.iter().enumerate() {
+        for (i, elem) in q.iter().enumerate() {
             print!("{}", elem);
             if i != q.len() - 1 {
                 print!(" ");
@@ -88,7 +83,6 @@ fn index_file(filename: &String, global_id: &mut usize, batch_size: usize,
     let decoder = Decoder::new(file).unwrap();
     let chunks = &BufReader::new(decoder).lines().chunks(batch_size);
     let mut batched_lines = chunks.into_iter();
-    let mut sorter = Vec::<usize>::new();
 
     // Read and process input in batches
     while let Some(chunk) = batched_lines.next() {
@@ -121,7 +115,7 @@ fn index_file(filename: &String, global_id: &mut usize, batch_size: usize,
             index.par_bulk_insert(ids, signatures);
         } else {
             let queries = index.par_bulk_query(&signatures);
-            print_queries(&mut sorter, &queries);
+            print_queries(&queries);
         }
         *global_id = new_id;
     }
