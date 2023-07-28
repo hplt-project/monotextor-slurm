@@ -33,6 +33,11 @@ struct Args{
            help="Tokenization type.")]
     tokenization: Tokenization,
 
+    #[clap(long, default_value_t=1000,
+        help="Documents with higher number of duplicates than this amount \
+             will be marked to be directly discarded. \
+             Not even keeping one of the group as representative.")]
+    num_duplicates_threshold: usize,
     #[clap(long, short, default_value_t=0.8, help="Jaccard similarity threshold.")]
     jaccard_threshold: f64,
     #[clap(long, short, default_value_t=260,
@@ -59,10 +64,10 @@ enum Tokenization {
 
 
 // Print a list of index queries
-fn print_queries(queries: &Vec<HashSet<usize>>) {
+fn print_queries(queries: &Vec<HashSet<usize>>, dups_threshold: usize) {
     for q in queries {
         // Very big query results marked to be directly discarded
-        if q.len() >= 1000{
+        if q.len() >= dups_threshold {
             println!("DISCARD");
             continue;
         }
@@ -81,7 +86,7 @@ fn print_queries(queries: &Vec<HashSet<usize>>) {
 fn index_file(filename: &String, global_id: &mut usize, batch_size: usize,
               index: &mut MinHashIndex<u32, usize, HashSetContainer<usize>>,
               hasher: &MinHasher32<FnvBuildHasher>,
-              query: bool) {
+              query: bool, dups_threshold: usize) {
 
     // read zstd compressed input, iterate in chunks
     let file = File::open(filename).unwrap();
@@ -120,7 +125,7 @@ fn index_file(filename: &String, global_id: &mut usize, batch_size: usize,
             index.par_bulk_insert(ids, signatures);
         } else {
             let queries = index.par_bulk_query(&signatures);
-            print_queries(&queries);
+            print_queries(&queries, dups_threshold);
         }
         *global_id = new_id;
     }
@@ -155,7 +160,8 @@ fn main() -> Result<()> {
     // Read, deserialize, hash and index each file
     let mut global_id = 0; // document id
     for file in &args.files {
-        index_file(file, &mut global_id, args.batch_size, &mut index, &hasher, false);
+        index_file(file, &mut global_id, args.batch_size, &mut index, &hasher, false,
+                   args.num_duplicates_threshold);
     }
     info!("Indexed {} documents", global_id);
 
@@ -164,7 +170,8 @@ fn main() -> Result<()> {
     println!("{}", global_id + 1);
     let mut global_id = 0;
     for file in &args.files {
-        index_file(file, &mut global_id, args.batch_size, &mut index, &hasher, true);
+        index_file(file, &mut global_id, args.batch_size, &mut index, &hasher, true,
+                   args.num_duplicates_threshold);
     }
     info!("Queried {} documents", global_id);
 
