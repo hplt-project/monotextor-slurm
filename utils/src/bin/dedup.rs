@@ -82,6 +82,14 @@ fn main() -> Result<()> {
     for (i, line_result) in reader.lines().enumerate() {
         line = line_result.unwrap();
 
+        // DISCARD lines, workaround for very repeated duplicates (aka very long queries)
+        // in that case, just set any other doc as parent
+        // given that they won't be their own parents, they will be discarded
+        if line == "DISCARD" {
+            uf.union(0, i);
+            continue;
+        }
+
         // parse the line and add doc ids to the set
         let parts: Vec<&str> = line.split(&[' ', '\t']).collect();
         for p in parts {

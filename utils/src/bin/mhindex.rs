@@ -61,6 +61,11 @@ enum Tokenization {
 // Print a list of index queries
 fn print_queries(queries: &Vec<HashSet<usize>>) {
     for q in queries {
+        // Very big query results marked to be directly discarded
+        if q.len() >= 1000{
+            println!("DISCARD");
+            continue;
+        }
         // Print each element of the query separated by space
         for (i, elem) in q.iter().enumerate() {
             print!("{}", elem);
