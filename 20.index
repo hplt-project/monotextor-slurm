@@ -1,0 +1,25 @@
+#!/bin/bash
+#SBATCH --job-name=index
+#SBATCH --partition="small"
+#SBATCH --time=24:00:00
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=64
+#SBATCH --mem-per-cpu=1750
+#SBATCH --output=logs/%x.out
+
+set -euo pipefail
+shopt -s failglob
+source .env
+
+L=$1
+COLL=$2
+TMPSFX=tmp_$SLURM_JOB_ID
+DIR=$WORKSPACE/$COLL/$L/
+JSON_FILES=$DIR/scored.*.jsonl.zst
+QUERY_FILE=$DIR/queries.zst
+
+# Build the index and query
+RAYON_NUM_THREADS=128 \
+mhindex --batch-size 10000 $JSON_FILES | zstd >$QUERY_FILE.$TMPSFX
+
+mv $QUERY_FILE.$TMPSFX $QUERY_FILE
