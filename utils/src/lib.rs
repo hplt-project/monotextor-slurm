@@ -4,6 +4,7 @@ use gaoya::text::whitespace_split;
 use shingles::Shingles;
 use fnv::FnvBuildHasher;
 use clap::ArgEnum;
+use seahash;
 
 pub trait TextField {
     fn get_text(&self) -> String;
@@ -104,6 +105,7 @@ impl UnionFind {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum)]
 pub enum Tokenization {
+    Vectorizer,
     Whitespace,
     Char,
 }
@@ -135,6 +137,16 @@ impl MinHashProcessor {
 
     pub fn create_signature(&self, text: &str) -> Vec<u32> {
         match self.tokenization {
+            Tokenization::Vectorizer => {
+                // Emulate HashingVectorizer index
+                let mut indices: Vec<i32> = Vec::with_capacity(100);
+                for token in whitespace_split(&text.to_lowercase()) {
+                    let hash = seahash::hash_seeded(token.as_bytes(), 1, 1000, 200, 89);
+                    let hash = (hash % 1_048_576) as i32;
+                    indices.push(hash);
+                }
+                self.minhasher.create_signature(indices.into_iter())
+            }
             Tokenization::Whitespace => {
                 self.minhasher.create_signature(
                     whitespace_split(&text.to_lowercase()))

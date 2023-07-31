@@ -27,7 +27,7 @@ struct Args{
     #[clap(long, short, default_value_t=-1,
            help="Band to be indexed. Values from 0 to band_size-1. If none specified, index all.")]
     band_id: isize,
-    #[clap(arg_enum, long, short, default_value="whitespace", possible_values=["whitespace", "char"],
+    #[clap(arg_enum, long, short, default_value="whitespace",
            help="Tokenization type.")]
     tokenizer: Tokenization,
     #[clap(short, long, default_value_t=3,
