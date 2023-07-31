@@ -1,4 +1,9 @@
 use serde::{Deserialize, Serialize};
+use gaoya::minhash::{MinHasher32, MinHasher};
+use gaoya::text::whitespace_split;
+use shingles::Shingles;
+use fnv::FnvBuildHasher;
+use clap::ArgEnum;
 
 pub trait TextField {
     fn get_text(&self) -> String;
@@ -93,5 +98,51 @@ impl UnionFind {
         let par_x = self.find(x);
         let par_y = self.find(y);
         self.parents[par_y] = par_x;
+    }
+}
+
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum)]
+pub enum Tokenization {
+    Whitespace,
+    Char,
+}
+
+//impl Tokenization {
+//    pub fn tokenize<'a>(&'a self, text: &'a str) -> Box<dyn Iterator<Item = &str> +'a> {
+//        match &self {
+//            Tokenization::Whitespace => { whitespace_split_boxed(&text) }
+//            Tokenization::Char => { shingle_text_boxed(&text, 1) }
+//        }
+//    }
+//}
+
+pub struct MinHashProcessor {
+    minhasher: MinHasher32<FnvBuildHasher>,
+    tokenization: Tokenization,
+    window_size: usize,
+}
+
+impl MinHashProcessor {
+    pub fn new(permutations: usize, tokenization: Tokenization, window_size: usize)
+            -> MinHashProcessor {
+        Self {
+            minhasher: MinHasher32::new(permutations),
+            tokenization: tokenization,
+            window_size: window_size,
+        }
+    }
+
+    pub fn create_signature(&self, text: &str) -> Vec<u32> {
+        match self.tokenization {
+            Tokenization::Whitespace => {
+                self.minhasher.create_signature(
+                    whitespace_split(&text.to_lowercase()))
+            }
+            Tokenization::Char => {
+                self.minhasher.create_signature(
+                    Shingles::new_with_step(text, self.window_size, self.window_size))
+            }
+        }
     }
 }

@@ -6,18 +6,16 @@ use itertools::Itertools;
 use rayon::prelude::*;
 use gaoya::minhash::{
     calculate_minhash_params,
-    MinHashIndex, MinHasher32, MinHasher,
-    HashSetContainer,
+    MinHashIndex, HashSetContainer,
 };
 use zstd::stream::read::Decoder;
-use gaoya::text::whitespace_split;
-use fnv::FnvBuildHasher;
 use serde_json::Result;
-use clap::{Parser, ArgEnum};
+use clap::Parser;
 use env_logger::Env;
 use log::info;
 
-use monotextor_utils::{DocumentText};
+use monotextor_utils::{DocumentText, Tokenization, MinHashProcessor};
+
 
 #[derive(Parser)]
 #[clap(version, about="Index a set of documents in JSONL format. \
@@ -29,9 +27,12 @@ struct Args{
     #[clap(long, short, default_value_t=-1,
            help="Band to be indexed. Values from 0 to band_size-1. If none specified, index all.")]
     band_id: isize,
-    #[clap(arg_enum, long, short, default_value="word",
+    #[clap(arg_enum, long, short, default_value="whitespace", possible_values=["whitespace", "char"],
            help="Tokenization type.")]
-    tokenization: Tokenization,
+    tokenizer: Tokenization,
+    #[clap(short, long, default_value_t=3,
+           help="Size of the non-overlapping window for character tokenization.")]
+    window_size: usize,
 
     #[clap(long, default_value_t=1000,
         help="Documents with higher number of duplicates than this amount \
@@ -54,12 +55,6 @@ struct Args{
 
     #[clap(help="zstd compressed jsonl files to be indexed.")]
     files: Vec<String>,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum)]
-enum Tokenization {
-    Word,
-    Char,
 }
 
 
@@ -85,7 +80,7 @@ fn print_queries(queries: &Vec<HashSet<usize>>, dups_threshold: usize) {
 // Read one file, parse, hash and insert each document in the index
 fn index_file(filename: &String, global_id: &mut usize, batch_size: usize,
               index: &mut MinHashIndex<u32, usize, HashSetContainer<usize>>,
-              hasher: &MinHasher32<FnvBuildHasher>,
+              hasher: &MinHashProcessor,
               query: bool, dups_threshold: usize) {
 
     // read zstd compressed input, iterate in chunks
@@ -110,9 +105,7 @@ fn index_file(filename: &String, global_id: &mut usize, batch_size: usize,
         // hash documents in parallel
         let signatures: Vec<_> = docs.par_iter()
             .map(|doc| {
-                hasher.create_signature(
-                    whitespace_split(&doc.text.to_lowercase())
-                )
+                hasher.create_signature(&doc.text)
             }).collect();
 
         // Enumerate all the documents, global id's
@@ -141,7 +134,7 @@ fn main() -> Result<()> {
     let (num_bands, band_width) = calculate_minhash_params(
         args.jaccard_threshold, args.permutations
     );
-    let hasher = MinHasher32::new(num_bands * band_width);
+    let hasher = MinHashProcessor::new(num_bands * band_width, args.tokenizer, args.window_size);
     let mut index:
         MinHashIndex<u32, usize, HashSetContainer<usize>> =
     {
@@ -160,8 +153,8 @@ fn main() -> Result<()> {
     // Read, deserialize, hash and index each file
     let mut global_id = 0; // document id
     for file in &args.files {
-        index_file(file, &mut global_id, args.batch_size, &mut index, &hasher, false,
-                   args.num_duplicates_threshold);
+        index_file(file, &mut global_id, args.batch_size,
+                   &mut index, &hasher, false, args.num_duplicates_threshold);
     }
     info!("Indexed {} documents", global_id);
 
@@ -170,8 +163,8 @@ fn main() -> Result<()> {
     println!("{}", global_id + 1);
     let mut global_id = 0;
     for file in &args.files {
-        index_file(file, &mut global_id, args.batch_size, &mut index, &hasher, true,
-                   args.num_duplicates_threshold);
+        index_file(file, &mut global_id, args.batch_size,
+                   &mut index, &hasher, true, args.num_duplicates_threshold);
     }
     info!("Queried {} documents", global_id);
 
