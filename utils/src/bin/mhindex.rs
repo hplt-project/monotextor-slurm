@@ -140,6 +140,7 @@ fn main() -> Result<()> {
     {
         MinHashIndex::new_index(num_bands, band_width, args.jaccard_threshold, args.band_id)
     };
+    info!("Num permutations: {}", num_bands*band_width);
     info!("Num bands: {}", num_bands);
     info!("Band width: {}", band_width);
     info!("Indexed band num: {}", args.band_id);
