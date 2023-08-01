@@ -17,17 +17,7 @@ module load parallel
 source .env
 set -euo pipefail
 
-rename-lang (){
-    local lang=$1
-    case "$lang" in
-        he) echo iw;;
-        nb) echo no;;
-        *) echo $lang;;
-    esac
-}
-
 L=$1
-W2TLANG=$(rename-lang $L)
 COLL=$2
 INPUT_DIR=${COLLECTIONS[$COLL]}
 OUTPUT_DIR=$WORKSPACE/$COLL/$L
@@ -52,6 +42,18 @@ compress-batch(){
 }
 export -f compress-batch
 
+lang-dirs (){
+    local lang=$2
+    local dir=$1
+    case "$lang" in
+        he) echo $INPUT_DIR/iw/*/*;;
+        nb) echo $INPUT_DIR/no/*/*;;
+        zh) echo $INPUT_DIR/{zh,zh-Hant}/*/*;;
+        *) echo $lang;;
+    esac
+}
+
+
 # Run one merge.py for each warc2text batch file
 # then re-split into batches of 60GB
 # --group avoids documents being separated
@@ -60,7 +62,7 @@ export -f compress-batch
 parallel -j60 --will-cite \
     --tmpdir $FLASH_TMP \
     --compress --compress-program zstd --group \
-    python merge.py -c $COLL {} ::: $INPUT_DIR/$W2TLANG/*/* \
+    python merge.py -c $COLL {} ::: `lang-dirs $INPUT_DIR $L` \
 | split - \
     --numeric-suffixes=1 -a 8 -C 120G \
     --filter='compress-batch $FILE' \
