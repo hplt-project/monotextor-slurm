@@ -1,9 +1,9 @@
 use std::env;
-use monotextor_utils::ZPaste;
+use monotextor_utils::queryreader::QueryReader;
 
 fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
-    let mf = ZPaste::new(args);
+    let mf = QueryReader::new(args);
     for i in mf {
         println!("{}", i);
     }
