@@ -161,7 +161,7 @@ fn main() -> Result<()> {
 
     info!("Querying documents");
     // start reading again, this time we query each document
-    println!("{}", global_id + 1);
+    println!("{}", global_id);
     let mut global_id = 0;
     for file in &args.files {
         index_file(file, &mut global_id, args.batch_size,
