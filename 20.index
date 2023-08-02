@@ -16,10 +16,12 @@ COLL=$2
 TMPSFX=tmp_$SLURM_JOB_ID
 DIR=$WORKSPACE/$COLL/$L/
 JSON_FILES=$DIR/scored.*.jsonl.zst
-QUERY_FILE=$DIR/queries.zst
+QUERY_FILE=$DIR/queries.$SLURM_ARRAY_TASK_ID
 
 # Build the index and query
+# index only one band per job
 RAYON_NUM_THREADS=128 \
-mhindex --batch-size 10000 $JSON_FILES | zstd >$QUERY_FILE.$TMPSFX
+mhindex --batch-size 10000 -b $((SLURM_ARRAY_TASK_ID-1)) $JSON_FILES \
+>$QUERY_FILE.$TMPSFX
 
 mv $QUERY_FILE.$TMPSFX $QUERY_FILE

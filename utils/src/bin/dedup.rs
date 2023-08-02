@@ -61,8 +61,8 @@ fn main() -> Result<()> {
     let now = Instant::now();
     let args = Args::parse();
     let file = File::open(args.queryfile).unwrap();
-    let decoder = Decoder::new(file).unwrap();
-    let mut reader = BufReader::new(decoder);
+    //let decoder = Decoder::new(file).unwrap();
+    let mut reader = BufReader::new(file);
 
     // Read header containing the number of records
     let mut line = String::new();
@@ -76,24 +76,25 @@ fn main() -> Result<()> {
     // Create set buffer to dedup each query
     // partitioned minhash will provide a list of queries per each doc
     // duplicated doc_ids may be found in each line
-    let mut uniq = HashSet::<usize>::new();
+    let mut uniq = HashSet::<usize>::with_capacity(100);
 
     info!("Reading queries file");
     for (i, line_result) in reader.lines().enumerate() {
         line = line_result.unwrap();
-
-        // DISCARD lines, workaround for very repeated duplicates (aka very long queries)
-        // in that case, just set any other doc as parent
-        // given that they won't be their own parents, they will be discarded
-        if line == "DISCARD" {
-            uf.union(0, i);
-            continue;
-        }
+        uniq.clear();
 
         // parse the line and add doc ids to the set
         let parts: Vec<&str> = line.split(&[' ', '\t']).collect();
         for p in parts {
-            let id: usize = p.parse().unwrap();
+            // DISCARD lines, workaround for very repeated duplicates (aka very long queries)
+            // in that case, just set any other doc as parent
+            // given that they won't be their own parents, they will be discarded
+            if p.starts_with("DISCARD") {
+                uf.union(0, i);
+                continue;
+            }
+            let id: usize = p.parse().expect(
+                format!("Could not parse '{}' in line {}:", p, i).as_str());
             uniq.insert(id);
         }
 
@@ -104,8 +105,6 @@ fn main() -> Result<()> {
             }
             uf.union(i, *j);
         }
-
-        uniq.clear();
     }
     debug!("Parents array: {:?}", uf.parents);
 

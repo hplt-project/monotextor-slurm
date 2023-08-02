@@ -16,11 +16,11 @@ COLL=$2
 TMPSFX=tmp_$SLURM_JOB_ID
 DIR=$WORKSPACE/$COLL/$L/
 JSON_FILES=$DIR/scored.*.jsonl.zst
-QUERY_FILE=$DIR/queries.zst
+QUERY_FILES=$DIR/queries.[0-9]*
 OUTPUT=$DIR/dedup.jsonl.zst
 
-dedup $QUERY_FILE $JSON_FILES \
+dedup <(paste $QUERY_FILES) $JSON_FILES \
 | zstd -10 -T64 >$OUTPUT.$TMPSFX
 
-rm $QUERY_FILE
+#rm $QUERY_FILES
 mv $OUTPUT.$TMPSFX $OUTPUT
