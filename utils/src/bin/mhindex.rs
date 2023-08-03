@@ -96,22 +96,15 @@ fn index_file(filename: &String, global_id: &mut usize, batch_size: usize,
             .map(|line| line.unwrap())
             .collect();
 
-        // parse each json line into doc in parallel
-        let docs: Vec<DocumentText> = batch.par_iter()
+        let signatures: Vec<_> = batch.par_iter()
             .map(|line: &String| {
-                serde_json::from_str(line.as_str()).unwrap()
-            }).collect();
-
-        // hash documents in parallel
-        let signatures: Vec<_> = docs.par_iter()
-            .map(|doc| {
+                let doc: DocumentText = serde_json::from_str(line.as_str()).unwrap();
                 hasher.create_signature(&doc.text)
             }).collect();
 
         // Enumerate all the documents, global id's
-        let new_id = *global_id + docs.len();
+        let new_id = *global_id + signatures.len();
         let ids: Vec<usize> = (*global_id..new_id).collect();
-        drop(docs);
 
         if !query {
             // insert into index in parallel
