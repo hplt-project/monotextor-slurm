@@ -1,4 +1,5 @@
 use std::io::{BufRead, BufReader, Result};
+use std::collections::HashSet;
 use std::time::Instant;
 use std::fs::File;
 use zstd::stream::read::Decoder;
@@ -7,7 +8,7 @@ use env_logger::Env;
 use log::{info,debug};
 use regex::Regex;
 
-use monotextor_utils::queryreader::QueryReader;
+use monotextor_utils::UnionFind;
 
 #[derive(Parser)]
 #[clap(version, about="Deduplicate a set of JSONL documents using index queries. \
@@ -18,8 +19,8 @@ struct Args{
            help="Print discarded duplicates, instead of non-discarded.")]
     duplicates: bool,
 
-    #[clap(short, long, help="Files containg the queries from the index.")]
-    queryfiles: Vec<String>,
+    #[clap(help="File containg the queries from the index.")]
+    queryfile: String,
     #[clap(help="zstd compressed jsonl files to be filtered.")]
     files: Vec<String>,
 }
@@ -59,12 +60,52 @@ fn main() -> Result<()> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     let now = Instant::now();
     let args = Args::parse();
+    let file = File::open(args.queryfile).unwrap();
+    //let decoder = Decoder::new(file).unwrap();
+    let mut reader = BufReader::new(file);
 
-    debug!("{:?}", args.queryfiles);
-    let qr = QueryReader::new(args.queryfiles);
+    // Read header containing the number of records
+    let mut line = String::new();
+    reader.read_line(&mut line).unwrap();
+    line.pop();
+    let parts: Vec<&str> = line.split(&[' ', '\t']).collect();
+    let num_records: usize = parts[0].parse().expect(format!("Could not parse {}", parts[0]).as_str());
+
+    // Create parents array
+    let mut uf = UnionFind::new(num_records);
+    // Create set buffer to dedup each query
+    // partitioned minhash will provide a list of queries per each doc
+    // duplicated doc_ids may be found in each line
+    let mut uniq = HashSet::<usize>::with_capacity(100);
 
     info!("Reading queries file");
-    let uf = qr.read_all();
+    for (i, line_result) in reader.lines().enumerate() {
+        line = line_result.unwrap();
+        uniq.clear();
+
+        // parse the line and add doc ids to the set
+        let parts: Vec<&str> = line.split(&[' ', '\t']).collect();
+        for p in parts {
+            // DISCARD lines, workaround for very repeated duplicates (aka very long queries)
+            // in that case, just set any other doc as parent
+            // given that they won't be their own parents, they will be discarded
+            if p.starts_with("DISCARD") {
+                uf.union(0, i);
+                continue;
+            }
+            let id: usize = p.parse().expect(
+                format!("Could not parse '{}' in line {}:", p, i).as_str());
+            uniq.insert(id);
+        }
+
+        // union each doc id in the query to the current doc (line number)
+        for j in &uniq {
+            if i == *j {
+                continue;
+            }
+            uf.union(i, *j);
+        }
+    }
     debug!("Parents array: {:?}", uf.parents);
 
     let regex_id = Regex::new(r#"^\{"id":[0-9]+,"#).unwrap();
