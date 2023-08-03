@@ -161,8 +161,10 @@ fn main() -> Result<()> {
                    &mut index, &hasher, true, args.num_duplicates_threshold);
     }
     info!("Queried {} documents", global_id);
+    drop(index);
+    drop(hasher);
 
-    info!("Elapsed time: {} s", now.elapsed().as_secs());
+    info!("Elapsed time: {:.2} s", now.elapsed().as_secs_f32());
     info!("Finished");
     Ok(())
 }

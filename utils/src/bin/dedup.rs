@@ -114,7 +114,7 @@ fn main() -> Result<()> {
         filter_dups(f, &uf.parents, &regex_id, args.duplicates);
     }
 
-    info!("Elapsed time: {} s", now.elapsed().as_secs());
+    info!("Elapsed time: {:.2} s", now.elapsed().as_secs_f32());
     info!("Finished");
     Ok(())
 }
