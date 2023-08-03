@@ -84,8 +84,10 @@ fn index_file(filename: &String, global_id: &mut usize, batch_size: usize,
               query: bool, dups_threshold: usize) {
 
     // read zstd compressed input, iterate in chunks
-    let file = File::open(filename).unwrap();
-    let decoder = Decoder::new(file).unwrap();
+    let file = File::open(filename)
+        .expect(format!("Error opening file '{filename}'").as_str());
+    let decoder = Decoder::new(file)
+        .expect(format!("Uncompressed or corrupted file '{filename}'").as_str());
     let chunks = &BufReader::new(decoder).lines().chunks(batch_size);
     let mut batched_lines = chunks.into_iter();
 
@@ -93,12 +95,13 @@ fn index_file(filename: &String, global_id: &mut usize, batch_size: usize,
     while let Some(chunk) = batched_lines.next() {
         // read the actual lines, panic if any error
         let batch: Vec<String> = chunk
-            .map(|line| line.unwrap())
+            .map(|line| line.expect("Error reading line"))
             .collect();
 
         let signatures: Vec<_> = batch.par_iter()
             .map(|line: &String| {
-                let doc: DocumentText = serde_json::from_str(line.as_str()).unwrap();
+                let doc: DocumentText = serde_json::from_str(line.as_str())
+                    .expect("Error parsing JSON document");
                 hasher.create_signature(&doc.text)
             }).collect();
 

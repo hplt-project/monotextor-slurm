@@ -27,13 +27,15 @@ struct Args{
 
 
 fn filter_dups(filename: &String, parents: &Vec<usize>, regex_id: &Regex, duplicates: bool){
-    let file = File::open(filename).unwrap();
-    let decoder = Decoder::new(file).unwrap();
+    let file = File::open(filename)
+        .expect(format!("Error opening file '{filename}'").as_str());
+    let decoder = Decoder::new(file)
+        .expect(format!("Uncompressed or corrupted file '{filename}'").as_str());
     let reader = BufReader::new(decoder);
     let mut readed = 0_usize;
 
     for (i, line_result) in reader.lines().enumerate() {
-        let mut line = line_result.unwrap();
+        let mut line = line_result.expect("Error reading line");
 
         // Discard every document that it is not its own parent
         // That way, we keep documents that do not have known duplicates
@@ -60,16 +62,20 @@ fn main() -> Result<()> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     let now = Instant::now();
     let args = Args::parse();
-    let file = File::open(args.queryfile).unwrap();
-    let decoder = Decoder::new(file).unwrap();
+    let filename = args.queryfile.clone();
+    let file = File::open(args.queryfile)
+        .expect(format!("Error opening file '{filename}'").as_str());
+    let decoder = Decoder::new(file)
+        .expect(format!("Uncompressed or corrupted file '{filename}'").as_str());
     let mut reader = BufReader::new(decoder);
 
     // Read header containing the number of records
     let mut line = String::new();
-    reader.read_line(&mut line).unwrap();
+    reader.read_line(&mut line).expect("Error reading header of queryfile");
     line.pop();
     let parts: Vec<&str> = line.split(&[' ', '\t']).collect();
-    let num_records: usize = parts[0].parse().expect(format!("Could not parse {}", parts[0]).as_str());
+    let num_records: usize = parts[0].parse()
+        .expect(format!("Could not parse {}", parts[0]).as_str());
 
     // Create parents array
     let mut uf = UnionFind::new(num_records);
@@ -80,7 +86,7 @@ fn main() -> Result<()> {
 
     info!("Reading queries file");
     for (i, line_result) in reader.lines().enumerate() {
-        line = line_result.unwrap();
+        line = line_result.expect("Error reading line");
         uniq.clear();
 
         // parse the line and add doc ids to the set
@@ -108,7 +114,7 @@ fn main() -> Result<()> {
     }
     debug!("Parents array: {:?}", uf.parents);
 
-    let regex_id = Regex::new(r#"^\{"id":[0-9]+,"#).unwrap();
+    let regex_id = Regex::new(r#"^\{"id":[0-9]+,"#).expect("Error creating regex");
     info!("Reading documents and discarding duplicates");
     for f in &args.files {
         filter_dups(f, &uf.parents, &regex_id, args.duplicates);
