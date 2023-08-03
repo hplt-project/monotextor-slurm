@@ -84,7 +84,7 @@ fn main() -> Result<()> {
         uniq.clear();
 
         // parse the line and add doc ids to the set
-        let parts: Vec<&str> = line.split(&[' ', '\t']).collect();
+        let parts = line.split(&[' ', '\t']);
         for p in parts {
             // DISCARD lines, workaround for very repeated duplicates (aka very long queries)
             // in that case, just set any other doc as parent
