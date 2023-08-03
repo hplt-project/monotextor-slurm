@@ -61,8 +61,8 @@ fn main() -> Result<()> {
     let now = Instant::now();
     let args = Args::parse();
     let file = File::open(args.queryfile).unwrap();
-    //let decoder = Decoder::new(file).unwrap();
-    let mut reader = BufReader::new(file);
+    let decoder = Decoder::new(file).unwrap();
+    let mut reader = BufReader::new(decoder);
 
     // Read header containing the number of records
     let mut line = String::new();
