@@ -224,3 +224,29 @@ impl Iterator for ZPaste<'_> {
         Some(self.buf.clone())
     }
 }
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn union_find() {
+        let mut uf = UnionFind::new(6);
+        uf.union(3,2);
+        uf.union(4,2);
+
+        assert_eq!(uf.parents, [0, 1, 3, 4, 4, 5]);
+    }
+
+    #[test]
+    fn union_find_path_compression() {
+        let mut uf = UnionFind::new(6);
+        uf.union(3,2);
+        uf.union(4,2);
+
+        assert_eq!(uf.find(2), 4);
+        assert_eq!(uf.parents, [0, 1, 4, 4, 4, 5]);
+    }
+}
