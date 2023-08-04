@@ -26,3 +26,19 @@ fn mhindex_dedup() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+
+#[test]
+fn tsv2jsonl() -> Result<(), Box<dyn std::error::Error>> {
+    let expected_output = fs::read_to_string("tests/example.jsonl")?;
+    let mut cmd = Command::cargo_bin("tsv2jsonl")?;
+
+    cmd
+        .arg("-l")
+        .arg("fi")
+        .pipe_stdin("tests/example.tsv")?
+        .assert()
+        .success()
+        .stdout(expected_output);
+
+    Ok(())
+}
