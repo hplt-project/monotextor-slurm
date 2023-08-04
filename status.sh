@@ -28,6 +28,14 @@ for c in $colls; do
         printf "batched"
     elif [[ $finished -ne $nbatches ]]; then
         printf "scoring $finished/$nbatches"
+        continue
+    fi
+
+    dedup_tmp=$(ls -1 $dir/dedup.*.jsonl.zst.tmp | wc -l)
+    query=$(ls -1 $dir/queries*.zst | wc -l)
+    if [ -f $dir/dedup.1.jsonl.zst ] && [ $dedup_tmp -eq 0 ] && [ $query -eq 0 ]
+    then
+        printf "deduped"
     else
         printf "scored"
     fi
