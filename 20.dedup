@@ -14,13 +14,37 @@ source .env
 L=$1
 COLL=$2
 TMPSFX=tmp_$SLURM_JOB_ID
-DIR=$WORKSPACE/$COLL/$L/
+DIR=$WORKSPACE/$COLL/$L
 JSON_FILES=$DIR/scored.*.jsonl.zst
-QUERY_FILES=$DIR/queries.[0-9]*
 OUTPUT=$DIR/dedup.jsonl.zst
 
-dedup <(paste $QUERY_FILES) $JSON_FILES \
-| zstd -10 -T64 >$OUTPUT.$TMPSFX
+# Read the split output, compress it to temp, then move
+compress-batch(){
+    local file=$1
+    # Remove 0s prefix
+    local name=$(echo $file | sed -E "s/\.0+/./g")
 
-#rm $QUERY_FILES
+    # compress stdin, write to a temp
+    zstd -T64 -10 >$name.jsonl.zst.tmp
+
+    # remove temp suffix
+    mv $name.jsonl.zst.tmp $name.jsonl.zst
+}
+export -f compress-batch
+
+
+if [ -f $DIR/queries.zst ]; then
+    # Single query file
+    QUERY_FILE=$DIR/queries.zst
+    dedup $QUERY_FILE $JSON_FILES
+else
+    # Distributed index, multiple query files
+    QUERY_FILES=$DIR/queries.[0-9]*.zst
+    dedup <(zpaste $QUERY_FILES) $JSON_FILES
+fi | split - \
+    --numeric-suffixes=1 -a 8 -C 120G \
+    --filter='compress-batch $FILE' \
+    $DIR/dedup.
+
+rm $QUERY_FILES
 mv $OUTPUT.$TMPSFX $OUTPUT

@@ -16,12 +16,19 @@ COLL=$2
 TMPSFX=tmp_$SLURM_JOB_ID
 DIR=$WORKSPACE/$COLL/$L/
 JSON_FILES=$DIR/scored.*.jsonl.zst
-QUERY_FILE=$DIR/queries.$SLURM_ARRAY_TASK_ID
+# If it's an array job, do distributed index
+if env | grep -q 'SLURM_ARRAY_TASK_ID'; then
+    QUERY_FILE=$DIR/queries.$SLURM_ARRAY_TASK_ID.zst
+    BAND="-b $((SLURM_ARRAY_TASK_ID-1))"
+else
+    QUERY_FILE=$DIR/queries.zst
+    BAND=""
+fi
 
 # Build the index and query
 # index only one band per job
-RAYON_NUM_THREADS=128 \
-mhindex --batch-size 10000 -b $((SLURM_ARRAY_TASK_ID-1)) $JSON_FILES \
->$QUERY_FILE.$TMPSFX
+RAYON_NUM_THREADS=$SLURM_CPUS_ON_NODE \
+mhindex --batch-size 10000 $BAND $JSON_FILES \
+| zstd >$QUERY_FILE.$TMPSFX
 
 mv $QUERY_FILE.$TMPSFX $QUERY_FILE
