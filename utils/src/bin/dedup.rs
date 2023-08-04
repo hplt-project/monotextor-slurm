@@ -26,13 +26,13 @@ struct Args{
 }
 
 
-fn filter_dups(filename: &String, parents: &Vec<usize>, regex_id: &Regex, duplicates: bool){
+fn filter_dups(filename: &String, unique_num: &mut usize,
+               parents: &Vec<usize>, regex_id: &Regex, duplicates: bool){
     let file = File::open(filename)
         .expect(format!("Error opening file '{filename}'").as_str());
     let decoder = Decoder::new(file)
         .expect(format!("Uncompressed or corrupted file '{filename}'").as_str());
     let reader = BufReader::new(decoder);
-    let mut readed = 0_usize;
 
     for (i, line_result) in reader.lines().enumerate() {
         let mut line = line_result.expect("Error reading line");
@@ -48,12 +48,13 @@ fn filter_dups(filename: &String, parents: &Vec<usize>, regex_id: &Regex, duplic
         } else if parents[i] != i {
             continue;
         }
-        readed += 1;
 
         // Re-assign new document id with regex, id always at the beggining, no need to parse the
         // whole json
-        line = regex_id.replace(&line, format!("{{\"id\":{},", readed)).to_string();
+        line = regex_id.replace(&line, format!("{{\"id\":{},", unique_num)).to_string();
         println!("{}", line);
+
+        *unique_num += 1;
     }
 
 }
@@ -115,9 +116,10 @@ fn main() -> Result<()> {
     debug!("Parents array: {:?}", uf.parents);
 
     let regex_id = Regex::new(r#"^\{"id":[0-9]+,"#).expect("Error creating regex");
+    let mut unique_num = 0_usize; //number of unique docs
     info!("Reading documents and discarding duplicates");
     for f in &args.files {
-        filter_dups(f, &uf.parents, &regex_id, args.duplicates);
+        filter_dups(f, &mut unique_num, &uf.parents, &regex_id, args.duplicates);
     }
 
     info!("Elapsed time: {:.2} s", now.elapsed().as_secs_f32());
