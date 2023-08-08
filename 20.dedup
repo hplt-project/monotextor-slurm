@@ -35,8 +35,8 @@ export -f compress-batch
 
 if [ -f $DIR/queries.zst ]; then
     # Single query file
-    QUERY_FILE=$DIR/queries.zst
-    dedup $QUERY_FILE $JSON_FILES
+    QUERY_FILES=$DIR/queries.zst
+    dedup $QUERY_FILES $JSON_FILES
 else
     # Distributed index, multiple query files
     QUERY_FILES=$DIR/queries.[0-9]*.zst
