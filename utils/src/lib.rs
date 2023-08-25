@@ -9,6 +9,8 @@ use fnv::FnvBuildHasher;
 use clap::ArgEnum;
 use seahash;
 
+pub mod indexer;
+
 pub trait TextField {
     fn get_text(&self) -> String;
 }
