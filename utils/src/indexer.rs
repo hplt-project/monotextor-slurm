@@ -8,7 +8,7 @@ use gaoya::minhash::{
 };
 use zstd::stream::read::Decoder;
 
-use crate::{DocumentText, Tokenization, MinHashProcessor};
+use crate::{DocumentText, Tokenization, MinHashProcessor, UnionFind};
 
 
 pub struct Indexer {
@@ -112,4 +112,24 @@ impl Indexer {
         }
     }
 
+
+    pub fn find_clusters(&self) -> UnionFind {
+        let mut uf = UnionFind::new(self.index.size());
+
+        // Compute unionfind components visiting each band cluster
+        for band in &self.index.bands {
+            for (_, cluster) in &band.hash_table {
+                if cluster.set.len() <= 1 {
+                    continue
+                }
+                // We set all elements in the cluster as duplicates of the first element
+                // as the first will be an arbitrary element
+                let first = cluster.set.iter().take(1).next().unwrap();
+                for elem in &cluster.set {
+                    uf.union(*first, *elem);
+                }
+            }
+        }
+        uf
+    }
 }

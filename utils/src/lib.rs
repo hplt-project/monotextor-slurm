@@ -7,6 +7,7 @@ use zstd::stream::read::Decoder;
 use shingles::Shingles;
 use fnv::FnvBuildHasher;
 use clap::ArgEnum;
+use regex::Regex;
 use seahash;
 
 pub mod indexer;
@@ -105,6 +106,42 @@ impl UnionFind {
         let par_y = self.find(y);
         self.parents[par_y] = par_x;
     }
+}
+
+// Read compressed JSONL and discard duplicates according to a UF parents array
+// Re-assign doc id with a unique num reference given
+// If duplicates is true, print only duplicates
+pub fn filter_dups(filename: &String, unique_num: &mut usize,
+               parents: &Vec<usize>, regex_id: &Regex, duplicates: bool){
+    let file = File::open(filename)
+        .expect(format!("Error opening file '{filename}'").as_str());
+    let decoder = Decoder::new(file)
+        .expect(format!("Uncompressed or corrupted file '{filename}'").as_str());
+    let reader = BufReader::new(decoder);
+
+    for (i, line_result) in reader.lines().enumerate() {
+        let mut line = line_result.expect("Error reading line");
+
+        // Discard every document that it is not its own parent
+        // That way, we keep documents that do not have known duplicates
+        // and one from each set of duplicates (the uppermost parent)
+        if duplicates {
+            if parents[i] != i {
+                println!("{}", line);
+            }
+            continue;
+        } else if parents[i] != i {
+            continue;
+        }
+
+        // Re-assign new document id with regex, id always at the beggining, no need to parse the
+        // whole json
+        line = regex_id.replace(&line, format!("{{\"id\":{},", unique_num)).to_string();
+        println!("{}", line);
+
+        *unique_num += 1;
+    }
+
 }
 
 

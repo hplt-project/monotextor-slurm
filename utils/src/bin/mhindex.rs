@@ -3,9 +3,10 @@ use gaoya::minhash::calculate_minhash_params;
 use serde_json::Result;
 use clap::Parser;
 use env_logger::Env;
-use log::info;
+use regex::Regex;
+use log::{info,debug};
 
-use monotextor_utils::Tokenization;
+use monotextor_utils::{Tokenization, filter_dups};
 use monotextor_utils::indexer::Indexer;
 
 
@@ -80,15 +81,18 @@ fn main() -> Result<()> {
     }
     info!("Indexed {} documents", global_id);
 
-    info!("Querying documents");
-    // start reading again, this time we query each document
-    println!("{}", global_id);
-    let mut global_id = 0;
-    for file in &args.files {
-        indexer.index_file(file, &mut global_id, true);
-    }
-    info!("Queried {} documents", global_id);
+    info!("Finding clusters");
+    let uf = indexer.find_clusters();
+    debug!("Parents array: {:?}", uf.parents);
     drop(indexer);
+
+    let regex_id = Regex::new(r#"^\{"id":[0-9]+,"#).expect("Error creating regex");
+    let mut unique_num = 0_usize; //number of unique docs
+    info!("Reading documents and discarding duplicates");
+    for f in &args.files {
+        filter_dups(f, &mut unique_num, &uf.parents, &regex_id, false);
+    }
+    info!("Duplicates discarded, {} documents kept", unique_num);
 
     info!("Elapsed time: {:.2} s", now.elapsed().as_secs_f32());
     info!("Finished");
