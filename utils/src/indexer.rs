@@ -3,18 +3,19 @@ use std::collections::HashSet;
 use std::fs::File;
 use rayon::prelude::*;
 use itertools::Itertools;
+use gaoya::unionfind::UnionFind;
 use gaoya::minhash::{
-    MinHashIndex, HashSetContainer,
+    MinHashDeduper,
 };
 use zstd::stream::read::Decoder;
 
-use crate::{DocumentText, Tokenization, MinHashProcessor, UnionFind};
+use crate::{DocumentText, Tokenization, MinHashProcessor};
 
 
-pub struct Indexer {
+pub struct Indexer
+{
     hasher: MinHashProcessor,
-    index: MinHashIndex<u32, usize, HashSetContainer<usize>>,
-    blocklist: HashSet<usize>,
+    index: MinHashDeduper<u32>,
     batch_size: usize,
     dups_threshold: usize,
 }
@@ -25,30 +26,11 @@ impl Indexer {
                batch_size: usize, dups_threshold: usize) -> Self {
         Self {
             hasher: MinHashProcessor::new(num_bands * band_width, tokenizer, window_size),
-            index: MinHashIndex::new_index(num_bands, band_width, jaccard_threshold, band_id),
-            blocklist: HashSet::new(),
+            index: MinHashDeduper::new_index(num_bands, band_width, jaccard_threshold, band_id),
             batch_size: batch_size,
             dups_threshold: dups_threshold,
         }
     }
-
-
-    // Preemptively add to a blocklist the duplicates repeated more than the threshold
-    // remove them from the index
-    fn _update_blocklist(&mut self, id: &usize, query: &HashSet<usize>) -> bool {
-        if query.len() >= self.dups_threshold || self.blocklist.contains(&id) {
-            for j in query {
-                self.blocklist.insert(*j);
-            }
-            if !self.blocklist.contains(&id) {
-                let list: Vec<usize> = query.iter().cloned().collect();
-                self.index.bulk_remove(&list);
-            }
-            return true;
-        }
-        return false
-    }
-
 
     // Print a list of index queries
     fn print_queries(&mut self, queries: &Vec<HashSet<usize>>) {
@@ -112,24 +94,7 @@ impl Indexer {
         }
     }
 
-
     pub fn find_clusters(&self) -> UnionFind {
-        let mut uf = UnionFind::new(self.index.size());
-
-        // Compute unionfind components visiting each band cluster
-        for band in &self.index.bands {
-            for (_, cluster) in &band.hash_table {
-                if cluster.set.len() <= 1 {
-                    continue
-                }
-                // We set all elements in the cluster as duplicates of the first element
-                // as the first will be an arbitrary element
-                let first = cluster.set.iter().take(1).next().unwrap();
-                for elem in &cluster.set {
-                    uf.union(*first, *elem);
-                }
-            }
-        }
-        uf
+        self.index.find_clusters()
     }
 }
