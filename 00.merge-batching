@@ -49,7 +49,7 @@ lang-dirs (){
         he) echo $INPUT_DIR/iw/*/*;;
         nb) echo $INPUT_DIR/no/*/*;;
         zh) echo $INPUT_DIR/{zh,zh-Hant}/*/*;;
-        *) echo $lang;;
+        *) echo $INPUT_DIR/$lang/*/*;;
     esac
 }
 
