@@ -34,13 +34,17 @@ struct Args{
     num_duplicates_threshold: usize,
     #[clap(long, short, default_value_t=0.8, help="Jaccard similarity threshold.")]
     jaccard_threshold: f64,
-    #[clap(long, short, default_value_t=260,
-           help="Number of permutations, a.k.a number of hashes.")]
-    permutations: usize,
-    //#[clap(long, required=false, help="Number of bands. If provided, permutations will be ignored.")]
-    //num_bands: usize,
-    //#[clap(long, required=false, help="Band width. If provided, permutations will be ignored.")]
-    //band_width: usize,
+    #[clap(long, short, required=false,
+           help="Number of permutations, a.k.a number of hashes. \
+                 If provided, num_bands and band_width will be ignored.")]
+    permutations: Option<usize>,
+    #[clap(long, default_value_t=17, help="Number of bands. If provided, permutations will be ignored.")]
+    num_bands: usize,
+    #[clap(long, default_value_t=15, help="Band width. If provided, permutations will be ignored.")]
+    band_width: usize,
+    #[clap(long, short='c', required=false, takes_value=false,
+           help="Instead of filtering duplicates, print the clusters array and exit.")]
+    print_clusters: bool,
 
     #[clap(long, short, required=false, takes_value=false,
            help="Print MinHash parameters and finish.")]
@@ -57,9 +61,14 @@ fn main() -> Result<()> {
     let now = Instant::now();
 
     // Create MinHash index and hasher objects
-    let (num_bands, band_width) = calculate_minhash_params(
-        args.jaccard_threshold, args.permutations
-    );
+    let mut num_bands = args.num_bands;
+    let mut band_width = args.band_width;
+    match args.permutations {
+        Some(p) => (num_bands, band_width) = calculate_minhash_params(
+                args.jaccard_threshold, p
+            ),
+        _ => (),
+    }
     let mut indexer = Indexer::new(num_bands, band_width, args.tokenizer, args.window_size,
                                    args.jaccard_threshold, args.band_id, args.batch_size,
                                    args.num_duplicates_threshold);
@@ -83,6 +92,18 @@ fn main() -> Result<()> {
 
     info!("Finding clusters");
     let uf = indexer.find_clusters();
+
+    if args.print_clusters {
+        info!("Printing cluster array");
+        println!("{}", uf.length);
+        for i in uf.parents {
+            print!("{} ", i);
+        }
+        println!("");
+        info!("Elapsed time: {:.2} s", now.elapsed().as_secs_f32());
+        info!("Finished");
+        return Ok(());
+    }
     debug!("Parents array: {:?}", uf.parents);
     drop(indexer);
 
