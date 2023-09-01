@@ -1,9 +1,12 @@
 use std::io::{BufRead, BufReader, Lines};
+use std::process::{id, Command};
+use std::str::from_utf8;
 use std::fs::File;
 use serde::{Deserialize, Serialize};
 use gaoya::minhash::{MinHasher32, MinHasher};
 use gaoya::text::whitespace_split;
 use zstd::stream::read::Decoder;
+use log::{info, warn};
 use shingles::Shingles;
 use fnv::FnvBuildHasher;
 use clap::ArgEnum;
@@ -142,6 +145,24 @@ pub fn filter_dups(filename: &String, unique_num: &mut usize,
         *unique_num += 1;
     }
 
+}
+
+pub fn memory_usage() {
+    let cmd_out = Command::new("sh")
+        .arg("-c")
+        .arg(format!("cat /proc/{}/status | grep -m 1 VmRSS | grep -o '[0-9]*'", id()))
+        .output();
+    if let Err(_) = cmd_out {
+        warn!("Could not obtain memory usage");
+    }else if let Ok(output) = cmd_out {
+        let mem = from_utf8(&output.stdout)
+            .expect("Error decoding command output")
+            .strip_suffix("\n")
+            .unwrap()
+            .to_string()
+            .parse::<u32>().unwrap() as f32 / 1e6;
+        info!("Memory used: {:.2} GB", mem);
+    }
 }
 
 

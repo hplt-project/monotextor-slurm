@@ -6,7 +6,7 @@ use env_logger::Env;
 use regex::Regex;
 use log::{info,debug};
 
-use monotextor_utils::{Tokenization, filter_dups};
+use monotextor_utils::{Tokenization, filter_dups, memory_usage};
 use monotextor_utils::indexer::Indexer;
 
 
@@ -92,6 +92,7 @@ fn main() -> Result<()> {
 
     info!("Finding clusters");
     let uf = indexer.find_clusters();
+    memory_usage();
 
     if args.print_clusters {
         info!("Printing cluster array");
