@@ -1,5 +1,4 @@
 use std::io::{BufRead, BufReader};
-use std::collections::HashSet;
 use std::fs::File;
 use rayon::prelude::*;
 use itertools::Itertools;
@@ -17,44 +16,22 @@ pub struct Indexer
     hasher: MinHashProcessor,
     index: MinHashDeduper<u32>,
     batch_size: usize,
-    dups_threshold: usize,
 }
 
 impl Indexer {
     pub fn new(num_bands: usize, band_width: usize, tokenizer: Tokenization,
                window_size: usize, jaccard_threshold: f64, band_id: isize,
-               batch_size: usize, dups_threshold: usize) -> Self {
+               batch_size: usize) -> Self {
         Self {
             hasher: MinHashProcessor::new(num_bands * band_width, tokenizer, window_size),
             index: MinHashDeduper::new_index(num_bands, band_width, jaccard_threshold, band_id),
             batch_size: batch_size,
-            dups_threshold: dups_threshold,
-        }
-    }
-
-    // Print a list of index queries
-    fn print_queries(&mut self, queries: &Vec<HashSet<usize>>) {
-        for q in queries {
-            // Very big query results marked to be directly discarded
-            //TODO tag as DISCARD the docs that are higher than threshold or are in the blocklist
-            if q.len() >= self.dups_threshold {
-                println!("DISCARD");
-                continue;
-            }
-            // Print each element of the query separated by space
-            for (i, elem) in q.iter().enumerate() {
-                print!("{}", elem);
-                if i != q.len() - 1 {
-                    print!(" ");
-                }
-            }
-            println!("");
         }
     }
 
 
     // Read one file, parse, hash and insert each document in the index
-    pub fn index_file(&mut self, filename: &String, global_id: &mut usize, query: bool) {
+    pub fn index_file(&mut self, filename: &String, global_id: &mut usize) {
         // read zstd compressed input, iterate in chunks
         let file = File::open(filename)
             .expect(format!("Error opening file '{filename}'").as_str());
@@ -81,15 +58,8 @@ impl Indexer {
             let new_id = *global_id + signatures.len();
             let ids: Vec<usize> = (*global_id..new_id).collect();
 
-            if !query {
-                // insert into index in parallel
-                self.index.par_bulk_insert(ids, signatures);
-            } else {
-                let queries = self.index.par_bulk_query(&signatures);
-                //TODO remove DISCARD docs from the index and add them to a blocklist
-                // also add all similars to the blocklist
-                self.print_queries(&queries);
-            }
+            // insert into index in parallel
+            self.index.par_bulk_insert(ids, signatures);
             *global_id = new_id;
         }
     }

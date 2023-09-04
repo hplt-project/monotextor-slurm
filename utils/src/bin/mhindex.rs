@@ -26,11 +26,11 @@ struct Args{
            help="Size of the non-overlapping window for character tokenization.")]
     window_size: usize,
 
-    #[clap(long, default_value_t=1000,
-        help="Documents with higher number of duplicates than this amount \
-             will be marked to be directly discarded. \
-             Not even keeping one of the group as representative.")]
-    num_duplicates_threshold: usize,
+    // #[clap(long, default_value_t=1000,
+    //     help="Documents with higher number of duplicates than this amount \
+    //          will be marked to be directly discarded. \
+    //          Not even keeping one of the group as representative.")]
+    // num_duplicates_threshold: usize,
     #[clap(long, short, default_value_t=0.8, help="Jaccard similarity threshold.")]
     jaccard_threshold: f64,
     #[clap(long, short, required=false,
@@ -69,8 +69,7 @@ fn main() -> Result<()> {
         _ => (),
     }
     let mut indexer = Indexer::new(num_bands, band_width, args.tokenizer, args.window_size,
-                                   args.jaccard_threshold, args.band_id, args.batch_size,
-                                   args.num_duplicates_threshold);
+                                   args.jaccard_threshold, args.band_id, args.batch_size);
     info!("Num permutations: {}", num_bands*band_width);
     info!("Num bands: {}", num_bands);
     info!("Band width: {}", band_width);
@@ -85,7 +84,7 @@ fn main() -> Result<()> {
     // Read, deserialize, hash and index each file
     let mut global_id = 0; // document id
     for file in &args.files {
-        indexer.index_file(file, &mut global_id, false);
+        indexer.index_file(file, &mut global_id);
     }
     info!("Indexed {} documents", global_id);
 
