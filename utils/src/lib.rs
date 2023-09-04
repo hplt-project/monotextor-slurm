@@ -150,7 +150,7 @@ pub fn filter_dups(filename: &String, unique_num: &mut usize,
 pub fn memory_usage() {
     let cmd_out = Command::new("sh")
         .arg("-c")
-        .arg(format!("cat /proc/{}/status | grep -m 1 VmRSS | grep -o '[0-9]*'", id()))
+        .arg(format!("cat /proc/{}/status | grep -m 1 VmHWM | grep -o '[0-9]*'", id()))
         .output();
     if let Err(_) = cmd_out {
         warn!("Could not obtain memory usage");
@@ -161,7 +161,7 @@ pub fn memory_usage() {
             .unwrap()
             .to_string()
             .parse::<u32>().unwrap() as f32 / 1e6;
-        info!("Memory used: {:.2} GB", mem);
+        info!("Peak memory used: {:.2} GB", mem);
     }
 }
 

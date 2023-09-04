@@ -3,16 +3,15 @@ use gaoya::minhash::calculate_minhash_params;
 use serde_json::Result;
 use clap::Parser;
 use env_logger::Env;
-use regex::Regex;
-use log::{info,debug};
+use log::info;
 
-use monotextor_utils::{Tokenization, filter_dups, memory_usage};
+use monotextor_utils::{Tokenization, memory_usage};
 use monotextor_utils::indexer::Indexer;
 
 
 #[derive(Parser)]
 #[clap(version, about="Index a set of documents in JSONL format. \
-                       Then return the queries of each document agains all the index.")]
+                       Then print the cluster array of duplicates.")]
 struct Args{
     #[clap(long, default_value_t=20000,
            help="Number of lines to be processed at a time")]
@@ -42,9 +41,9 @@ struct Args{
     num_bands: usize,
     #[clap(long, default_value_t=15, help="Band width. If provided, permutations will be ignored.")]
     band_width: usize,
-    #[clap(long, short='c', required=false, takes_value=false,
-           help="Instead of filtering duplicates, print the clusters array and exit.")]
-    print_clusters: bool,
+    //#[clap(long, short='c', required=false, takes_value=false,
+    //       help="Instead of filtering duplicates, print the clusters array and exit.")]
+    //print_clusters: bool,
 
     #[clap(long, short, required=false, takes_value=false,
            help="Print MinHash parameters and finish.")]
@@ -92,30 +91,15 @@ fn main() -> Result<()> {
 
     info!("Finding clusters");
     let uf = indexer.find_clusters();
+
+    info!("Printing cluster array");
+    println!("{}", uf.length);
+    for i in uf.parents {
+        print!("{} ", i);
+    }
+    println!("");
+
     memory_usage();
-
-    if args.print_clusters {
-        info!("Printing cluster array");
-        println!("{}", uf.length);
-        for i in uf.parents {
-            print!("{} ", i);
-        }
-        println!("");
-        info!("Elapsed time: {:.2} s", now.elapsed().as_secs_f32());
-        info!("Finished");
-        return Ok(());
-    }
-    debug!("Parents array: {:?}", uf.parents);
-    drop(indexer);
-
-    let regex_id = Regex::new(r#"^\{"id":[0-9]+,"#).expect("Error creating regex");
-    let mut unique_num = 0_usize; //number of unique docs
-    info!("Reading documents and discarding duplicates");
-    for f in &args.files {
-        filter_dups(f, &mut unique_num, &uf.parents, &regex_id, false);
-    }
-    info!("Duplicates discarded, {} documents kept", unique_num);
-
     info!("Elapsed time: {:.2} s", now.elapsed().as_secs_f32());
     info!("Finished");
     Ok(())
