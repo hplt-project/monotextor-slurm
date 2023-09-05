@@ -12,7 +12,7 @@ echo ${COLLECTIONS[$COLL]}/$L
 
 # Distributed minhash index
 if [[ $# -eq 3 ]] && [[ $3 =~ "dist" ]]; then
-    bands=$(mhindex -d -p 260 -j 0.8 2>&1 | grep 'Num bands' | perl -pe 's/.*Num bands: (\d+)/$1/')
+    bands=$(mhindex -d 2>&1 | grep 'Num bands' | perl -pe 's/.*Num bands: (\d+)/$1/')
     echo Submitting array job of 1-$bands jobs
     read -p "Confirm? [y/n] " -n 1 -r
     if [[ ! $REPLY =~ [Yy] ]]; then echo; exit 1; fi

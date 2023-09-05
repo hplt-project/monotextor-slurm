@@ -33,18 +33,22 @@ compress-batch(){
 export -f compress-batch
 
 
-if [ -f $DIR/queries.zst ]; then
-    # Single query file
-    QUERY_FILES=$DIR/queries.zst
-    dedup $QUERY_FILES $JSON_FILES
+CLUSTER_FILES=""
+if [ -f $DIR/clusters.zst ]; then
+    # Single clusters file
+    CLUSTER_FILES=$DIR/clusters.zst
+    dedup $CLUSTER_FILES $JSON_FILES
+    rm $CLUSTER_FILES
 else
-    # Distributed index, multiple query files
-    QUERY_FILES=$DIR/queries.[0-9]*.zst
-    dedup <(zpaste $QUERY_FILES) $JSON_FILES
-fi | split - \
-    --numeric-suffixes=1 -a 8 -C 120G \
-    --filter='compress-batch $FILE' \
-    $DIR/dedup.
+    # Distributed index, multiple clusters files
+    CLUSTER_FILES=$DIR/clusters.[0-9]*.zst
+    dedup <(cat $CLUSTER_FILES) $JSON_FILES
+    rm $CLUSTER_FILES
+fi | zstd -T$SLURM_CPUS_PER_TASK -10 \
+>$OUTPUT.$TMPSFX
+   #| split - \
+   # --numeric-suffixes=1 -a 8 -C 120G \
+   # --filter='compress-batch $FILE' \
+   # $DIR/dedup.
 
-rm $QUERY_FILES
 mv $OUTPUT.$TMPSFX $OUTPUT
