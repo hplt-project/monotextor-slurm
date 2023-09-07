@@ -84,7 +84,8 @@ fn main() -> Result<()> {
     for f in &args.files {
         filter_dups(f, &mut unique_num, &uf.parents, &regex_id, args.duplicates);
     }
-    info!("Duplicates discarded, {} documents kept", unique_num);
+    let pct = (unique_num as f32 / num_records as f32) * 100.0;
+    info!("Duplicates discarded, {} documents kept ({:.2} %)", unique_num, pct);
 
     info!("Elapsed time: {:.2} s", now.elapsed().as_secs_f32());
     info!("Finished");
