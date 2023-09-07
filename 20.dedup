@@ -12,20 +12,22 @@ shopt -s failglob
 source .env
 
 L=$1
-COLL=$2
 TMPSFX=tmp_$SLURM_JOB_ID
-DIR=$WORKSPACE/$COLL/$L
-JSON_FILES=$DIR/scored.*.jsonl.zst
-OUTPUT=$DIR/dedup.jsonl.zst
+DIR=$WORKSPACE/dedup/$L
+JSON_FILES=""
+for i in ${!COLLECTIONS[@]}; do
+    files=`ls $WORKSPACE/$i/$L/scored.*.jsonl.zst`
+    JSON_FILES="$JSON_FILES $files"
+done
 
 # Read the split output, compress it to temp, then move
 compress-batch(){
     local file=$1
     # Remove 0s prefix
-    local name=$(echo $file | sed -E "s/\.0+/./g")
+    local name=$(echo $file | sed -E "s/\_0+/_/g")
 
     # compress stdin, write to a temp
-    zstd -T64 -10 >$name.jsonl.zst.tmp
+    zstd -T$SLURM_CPUS_PER_TASK -10 >$name.jsonl.zst.tmp
 
     # remove temp suffix
     mv $name.jsonl.zst.tmp $name.jsonl.zst
@@ -38,17 +40,16 @@ if [ -f $DIR/clusters.zst ]; then
     # Single clusters file
     CLUSTER_FILES=$DIR/clusters.zst
     dedup $CLUSTER_FILES $JSON_FILES
-    rm $CLUSTER_FILES
+    #rm $CLUSTER_FILES
 else
     # Distributed index, multiple clusters files
     CLUSTER_FILES=$DIR/clusters.[0-9]*.zst
     dedup <(cat $CLUSTER_FILES) $JSON_FILES
-    rm $CLUSTER_FILES
-fi | zstd -T$SLURM_CPUS_PER_TASK -10 \
->$OUTPUT.$TMPSFX
-   #| split - \
-   # --numeric-suffixes=1 -a 8 -C 120G \
-   # --filter='compress-batch $FILE' \
-   # $DIR/dedup.
-
-mv $OUTPUT.$TMPSFX $OUTPUT
+    #rm $CLUSTER_FILES
+fi | split - \
+    --numeric-suffixes=1 -a 8 -C 120G \
+    --filter='compress-batch $FILE' \
+    $DIR/${L}_
+#| zstd -T$SLURM_CPUS_PER_TASK -10 \
+#>$OUTPUT.$TMPSFX
+#mv $OUTPUT.$TMPSFX $OUTPUT

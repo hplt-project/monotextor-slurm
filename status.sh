@@ -33,9 +33,10 @@ for c in $colls; do
         continue
     fi
 
-    dedup_tmp=$(ls -1 $dir/dedup.*.jsonl.zst.tmp | wc -l)
-    query=$(ls -1 $dir/queries*.zst | wc -l)
-    if [ -f $dir/dedup.1.jsonl.zst ] && [ $dedup_tmp -eq 0 ] && [ $query -eq 0 ]
+    dedir=$WORKSPACE/dedup/$L
+    dedup_tmp=$(ls -1 $dedir/${L}_*.jsonl.zst.tmp | wc -l)
+    #clusters=$(ls -1 $dedir/clusters*.zst | wc -l)
+    if [ -f $dedir/${L}_1.jsonl.zst ] && [ $dedup_tmp -eq 0 ]
     then
         printf "deduped"
     else
