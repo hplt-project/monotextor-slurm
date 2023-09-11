@@ -1,5 +1,7 @@
 use std::io::{BufRead, BufReader};
+use std::sync::mpsc::sync_channel;
 use std::fs::File;
+use std::thread;
 use rayon::prelude::*;
 use itertools::Itertools;
 use gaoya::unionfind::UnionFind;
@@ -32,21 +34,32 @@ impl Indexer {
 
     // Read one file, parse, hash and insert each document in the index
     pub fn index_file(&mut self, filename: &String, global_id: &mut usize) {
-        // read zstd compressed input, iterate in chunks
-        let file = File::open(filename)
-            .expect(format!("Error opening file '{filename}'").as_str());
-        let decoder = Decoder::new(file)
-            .expect(format!("Uncompressed or corrupted file '{filename}'").as_str());
-        let chunks = &BufReader::new(decoder).lines().chunks(self.batch_size);
-        let mut batched_lines = chunks.into_iter();
+        // create bounded thread communication channel
+        let (sender, receiver) = sync_channel(1);
 
-        // Read and process input in batches
-        while let Some(chunk) = batched_lines.next() {
-            // read the actual lines, panic if any error
-            let batch: Vec<String> = chunk
-                .map(|line| line.expect("Error reading line"))
-                .collect();
+        // Copy to send it to the thread
+        let batch_size = self.batch_size;
+        let new_filename = filename.clone();
 
+        // Spawn a thread to do the file reading and decompression
+        let read_thread = thread::spawn(move || {
+            // read zstd compressed input, iterate in chunks
+            let file = File::open(&new_filename)
+                .expect(format!("Error opening file '{new_filename}'").as_str());
+            let decoder = Decoder::new(file)
+                .expect(format!("Uncompressed or corrupted file '{new_filename}'").as_str());
+            let chunks = &BufReader::new(decoder).lines().chunks(batch_size);
+
+            for batch_result in chunks {
+                let batch: Vec<String> = batch_result
+                    .map(|line| line.expect("Error reading line"))
+                    .collect();
+                sender.send(batch).unwrap();
+            }
+        });
+
+        // Read batched lines sent from the thread and process them
+        while let Ok(batch) = receiver.recv() {
             let signatures: Vec<_> = batch.par_iter()
                 .map(|line: &String| {
                     let doc: DocumentText = serde_json::from_str(line.as_str())
@@ -62,6 +75,8 @@ impl Indexer {
             self.index.par_bulk_insert(ids, signatures);
             *global_id = new_id;
         }
+
+        read_thread.join().unwrap();
     }
 
     pub fn find_clusters(&self) -> UnionFind {
