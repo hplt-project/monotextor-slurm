@@ -5,7 +5,8 @@ use clap::Parser;
 use env_logger::Env;
 use log::info;
 
-use monotextor_utils::{Tokenization, memory_usage};
+use monotextor_utils::minhash_processor::Tokenization;
+use monotextor_utils::utils::memory_usage;
 use monotextor_utils::indexer::Indexer;
 
 

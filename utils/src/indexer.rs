@@ -10,7 +10,8 @@ use gaoya::minhash::{
 };
 use zstd::stream::read::Decoder;
 
-use crate::{DocumentText, Tokenization, MinHashProcessor};
+use crate::minhash_processor::{Tokenization, MinHashProcessor};
+use crate::DocumentText;
 
 
 pub struct Indexer
