@@ -79,15 +79,19 @@ fn main() -> Result<()> {
     debug!("Parents array: {:?}", uf.parents);
 
     let regex_id = Regex::new(r#"^\{"id":[0-9]+,"#).expect("Error creating regex");
-    let mut unique_num = 0_usize; //number of unique docs
+    let mut num_unique = 0_usize; //number of unique docs
+    let mut num_docs = 0_usize; //number of readed docs
     info!("Reading documents and discarding duplicates");
     for f in &args.files {
-        filter_dups(f, &mut unique_num, &uf.parents, &regex_id, args.duplicates);
+        filter_dups(f, &mut num_docs, &mut num_unique, &uf.parents, &regex_id, args.duplicates);
     }
-    let pct = (unique_num as f32 / num_records as f32) * 100.0;
-    info!("Duplicates discarded, {} documents kept ({:.2} %)", unique_num, pct);
+    let pct = (num_unique as f32 / num_records as f32) * 100.0;
+    info!("Duplicates discarded, {} documents kept ({:.2} %)", num_unique, pct);
 
     info!("Elapsed time: {:.2} s", now.elapsed().as_secs_f32());
     info!("Finished");
+    if num_docs != num_records {
+        panic!("Number of read docs is different than in cluster file: {} vs {}", num_docs, num_records);
+    }
     Ok(())
 }

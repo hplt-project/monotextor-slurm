@@ -10,7 +10,12 @@ fn mhindex_dedup() -> Result<(), Box<dyn std::error::Error>> {
     let expected_output = fs::read_to_string("tests/dedup.out")?;
     let mut mhindex_cmd = Command::cargo_bin("mhindex")?;
 
-    let mhindex_out = mhindex_cmd.arg("tests/sample.jsonl.zst")
+    let mhindex_out = mhindex_cmd
+        .arg("--jaccard-threshold").arg("0.8")
+        .arg("--num-bands").arg("17")
+        .arg("--band-width").arg("15")
+        .arg("tests/sample1.jsonl.zst")
+        .arg("tests/sample2.jsonl.zst")
         .output().unwrap().stdout;
     let mut temp = NamedTempFile::new()?;
     temp.write_all(&compress(&mhindex_out, 0)?)?;
@@ -18,7 +23,8 @@ fn mhindex_dedup() -> Result<(), Box<dyn std::error::Error>> {
     let mut dedup_cmd = Command::cargo_bin("dedup")?;
     dedup_cmd
         .arg(temp.path())
-        .arg("tests/sample.jsonl.zst")
+        .arg("tests/sample1.jsonl.zst")
+        .arg("tests/sample2.jsonl.zst")
         .assert()
         .success()
         .stdout(expected_output);

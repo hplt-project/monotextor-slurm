@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use gaoya::minhash::{MinHasher32, MinHasher};
 use gaoya::text::whitespace_split;
 use zstd::stream::read::Decoder;
-use log::{info, warn};
+use log::{info, warn, debug};
 use shingles::Shingles;
 use fnv::FnvBuildHasher;
 use clap::ArgEnum;
@@ -114,7 +114,7 @@ impl UnionFind {
 // Read compressed JSONL and discard duplicates according to a UF parents array
 // Re-assign doc id with a unique num reference given
 // If duplicates is true, print only duplicates
-pub fn filter_dups(filename: &String, unique_num: &mut usize,
+pub fn filter_dups(filename: &String, num_docs: &mut usize, num_unique: &mut usize,
                parents: &Vec<usize>, regex_id: &Regex, duplicates: bool){
     let file = File::open(filename)
         .expect(format!("Error opening file '{filename}'").as_str());
@@ -122,27 +122,31 @@ pub fn filter_dups(filename: &String, unique_num: &mut usize,
         .expect(format!("Uncompressed or corrupted file '{filename}'").as_str());
     let reader = BufReader::new(decoder);
 
-    for (i, line_result) in reader.lines().enumerate() {
+    for line_result in reader.lines() {
         let mut line = line_result.expect("Error reading line");
 
         // Discard every document that it is not its own parent
         // That way, we keep documents that do not have known duplicates
         // and one from each set of duplicates (the uppermost parent)
         if duplicates {
-            if parents[i] != i {
+            if parents[*num_docs] != *num_docs {
                 println!("{}", line);
             }
+            *num_docs += 1;
             continue;
-        } else if parents[i] != i {
+        } else if parents[*num_docs] != *num_docs {
+            debug!("Discarding document {num_docs} in cluster {}", parents[*num_docs]);
+            *num_docs += 1;
             continue;
         }
 
         // Re-assign new document id with regex, id always at the beggining, no need to parse the
         // whole json
-        line = regex_id.replace(&line, format!("{{\"id\":{},", unique_num)).to_string();
+        line = regex_id.replace(&line, format!("{{\"id\":{},", num_unique)).to_string();
         println!("{}", line);
 
-        *unique_num += 1;
+        *num_docs += 1;
+        *num_unique += 1;
     }
 
 }
