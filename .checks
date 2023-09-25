@@ -3,3 +3,9 @@
 [[ ${WORKSPACE-} ]] || { echo "\$WORKSPACE has to be defined in .env"; exit 1; }
 [[ ${MONOCLEANER_MODELS-} ]] || { echo "\$MONOCLEANER_MODELS has to be defined in .env"; exit 1; }
 [[ ${FLASH_TMP-} ]] || { echo "\$FLASH_TMP has to be defined in .env"; exit 1; }
+
+confirm() {
+    read -p "Confirm? [y/n] " -n 1 -r
+    if [[ ! $REPLY =~ [Yy] ]]; then echo; exit 0; fi
+    echo
+}

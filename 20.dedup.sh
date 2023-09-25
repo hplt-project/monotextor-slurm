@@ -13,13 +13,19 @@ for i in ${!COLLECTIONS[@]}; do
 done
 echo "Deduping ${!COLLECTIONS[@]}"
 
+if [ -s $WORKSPACE/dedup/$L/clusters.zst ] || [ -s $WORKSPACE/dedup/$L/clusters.17.zst ]; then
+    echo "Cluster file already exists, submitting dedup only"
+    confirm
+    SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x.out" \
+    sbatch -J $L-dedup 20.dedup $L
+    exit 0
+fi
+
 # Distributed minhash index
 if [[ $# -eq 2 ]] && [[ $2 =~ "dist" ]]; then
     bands=$(mhindex -d 2>&1 | grep 'Num bands' | perl -pe 's/.*Num bands: (\d+)/$1/')
     echo Submitting array job of 1-$bands jobs
-    read -p "Confirm? [y/n] " -n 1 -r
-    if [[ ! $REPLY =~ [Yy] ]]; then echo; exit 1; fi
-    echo
+    confirm
 
     INDEX_ID=$(\
         SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x-%A_%a.out" \
@@ -27,9 +33,7 @@ if [[ $# -eq 2 ]] && [[ $2 =~ "dist" ]]; then
         --parsable 20.index $L)
 else
     echo Submitting job
-    read -p "Confirm? [y/n] " -n 1 -r
-    if [[ ! $REPLY =~ [Yy] ]]; then echo; exit 1; fi
-    echo
+    confirm
 
     INDEX_ID=$(\
         SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x.out" \
