@@ -1,4 +1,4 @@
-use gaoya::minhash::{MinHasher32, MinHasher};
+use gaoya::minhash::{MinHasher64V1, MinHasher};
 use gaoya::text::whitespace_split;
 use fnv::FnvBuildHasher;
 use shingles::Shingles;
@@ -22,7 +22,7 @@ pub enum Tokenization {
 //}
 
 pub struct MinHashProcessor {
-    minhasher: MinHasher32<FnvBuildHasher>,
+    minhasher: MinHasher64V1<FnvBuildHasher>,
     tokenization: Tokenization,
     window_size: usize,
 }
@@ -31,13 +31,13 @@ impl MinHashProcessor {
     pub fn new(permutations: usize, tokenization: Tokenization, window_size: usize)
             -> MinHashProcessor {
         Self {
-            minhasher: MinHasher32::new(permutations),
+            minhasher: MinHasher64V1::new(permutations),
             tokenization: tokenization,
             window_size: window_size,
         }
     }
 
-    pub fn create_signature(&self, text: &str) -> Vec<u32> {
+    pub fn create_signature(&self, text: &str) -> Vec<u64> {
         match self.tokenization {
             Tokenization::Vectorizer => {
                 // Emulate HashingVectorizer index

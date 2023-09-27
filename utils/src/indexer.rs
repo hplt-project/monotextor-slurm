@@ -17,7 +17,7 @@ use crate::DocumentText;
 pub struct Indexer
 {
     hasher: MinHashProcessor,
-    index: MinHashDeduper<u32>,
+    index: MinHashDeduper<u64>,
     batch_size: usize,
 }
 
