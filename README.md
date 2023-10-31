@@ -1,5 +1,5 @@
 # monotextor-slurm
-Set of scripts to run monotextor-like pipeline under slurm HPCs 
+Set of scripts to run [monotextor](https://github.com/bitextor/monotextor)-like pipeline under Slurm HPCs 
 
 
 ## Pipeline description
@@ -115,16 +115,16 @@ The output format is JSONL, where each line is a valid JSON value and a full doc
 For example, the resulting JSON will be something like:
 ```json
 {"id":1, "document_lang":"en", 
-    "scores":["0.76","0.76","0.76"],
+    "scores":[0.76,0.76,0.76],
     "langs":["en","en","en"],
     "text":"this is paragraph1\nthis is paragraph2\nthis is paragraph3",
     "url":"url1", "collection":"collection-1" 
 }
 {"id":2, "document_lang":"en",
-    "scores":["0.65",...],
+    "scores":[0.65,...],
     "langs":["en",...],
     "text":"another paragraph\n...",
 ...
 ```
 In each document, each paragraph is concatenated using new-line separators.
-`lang` and `monocleaner_score` are lists containing one entry per paragraph, corresponding to the language identified and monocleaner score of each one.
+`langs` and `scores` are lists containing one entry per paragraph, corresponding to the language identified and monocleaner score of each one.
