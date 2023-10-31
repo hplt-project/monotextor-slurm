@@ -14,7 +14,10 @@ for c in $colls; do
 
     running=$(ls -1 $dir/batch.* | grep tmp | wc -l)
     nbatches=$(ls -1 $dir/batch.* | wc -l)
-    if [[ $nbatches -eq 0 ]]; then
+    scored=$(ls -1 $dir/scored.*.jsonl.* | grep -c -v tmp_)
+    scored_tmp=$(ls -1 $dir/scored.*.jsonl.* | grep -c tmp_)
+    total=$(ls -1 $dir/scored.*.jsonl.* | wc -l)
+    if [[ $nbatches -eq 0 ]] && [[ $scored -eq 0 ]]; then
         printf "none\t"
         continue
     elif [[ $running -ne 0 ]]; then
@@ -22,12 +25,20 @@ for c in $colls; do
         continue
     fi
 
-    finished=$(ls -1 $dir/scored.*.jsonl.* | grep -c -v tmp_)
-    total=$(ls -1 $dir/scored.*.jsonl.* | wc -l)
     if [[ $total -eq 0 ]]; then
-        printf "batched"
-    elif [[ $finished -ne $nbatches ]]; then
-        printf "scoring $finished/$nbatches"
+        printf "batched\t"
+        continue
+    elif [[ $nbatches -ne 0 ]] && [[ $scored -ne $nbatches ]]; then
+        printf "scoring $scored/$nbatches\t"
+        continue
+    fi
+
+    dedir=$WORKSPACE/dedup/$L
+    dedup_tmp=$(ls -1 $dedir/${L}_*.jsonl.zst.tmp | wc -l)
+    #clusters=$(ls -1 $dedir/clusters*.zst | wc -l)
+    if [ -f $dedir/${L}_1.jsonl.zst ] && [ $dedup_tmp -eq 0 ]
+    then
+        printf "deduped"
     else
         printf "scored"
     fi

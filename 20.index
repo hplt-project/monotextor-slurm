@@ -1,0 +1,48 @@
+#!/bin/bash
+#SBATCH --job-name=index
+#SBATCH --partition="small"
+#SBATCH --time=72:00:00
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=128
+## 3750 mem to go for 512gb nodes
+#SBATCH --mem-per-cpu=1750
+#SBATCH --output=logs/%x.out
+
+set -euo pipefail
+shopt -s failglob
+source .env
+
+L=$1
+TMPSFX=tmp_$SLURM_JOB_ID
+DIR=$WORKSPACE/dedup/$L
+JSON_FILES=""
+for i in `echo ${!COLLECTIONS[@]} | tr ' ' '\n' | sort`; do
+    files=`ls $WORKSPACE/$i/$L/scored.*.jsonl.zst`
+    JSON_FILES="$JSON_FILES $files"
+done
+mkdir -p $DIR
+echo $JSON_FILES >&2
+
+# If it's an array job, do distributed index
+if env | grep -q 'SLURM_ARRAY_TASK_ID'; then
+    PARAMS="-b $((SLURM_ARRAY_TASK_ID-1))"
+    OUTPUT_FILE=$DIR/clusters.$SLURM_ARRAY_TASK_ID.zst
+else
+    PARAMS=""
+    OUTPUT_FILE=$DIR/clusters.zst
+fi
+
+case "$L" in
+#    zh | ja | th)
+#        PARAMS="$PARAMS --tokenizer char";;
+    *)
+        PARAMS="$PARAMS --tokenizer whitespace";;
+esac
+
+# Build the index and save clusters array
+# index only one band per job
+RAYON_NUM_THREADS=$SLURM_CPUS_PER_TASK \
+mhindex --batch-size 20000 $PARAMS $JSON_FILES \
+| zstd -10 -T64 >$OUTPUT_FILE.$TMPSFX
+
+mv $OUTPUT_FILE.$TMPSFX $OUTPUT_FILE

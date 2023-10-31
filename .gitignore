@@ -1,4 +1,5 @@
 core
+status
 data/
 logs/
 *.swp

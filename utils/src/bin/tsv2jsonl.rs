@@ -1,48 +1,16 @@
-use serde::{Deserialize, Serialize};
 use std::io::{self, BufRead, Write, Result};
 use serde_json;
 use clap::Parser;
 
+use monotextor_utils::Document;
+
 #[derive(Parser)]
-#[clap(author, version, about, long_about = None)]
+#[clap(author, version, about="Convert TSV format to JSONL documents", long_about = None)]
 struct Args {
     #[clap(short, long)]
     language: String,
 }
 
-#[derive(Serialize, Deserialize)]
-struct Document {
-    id: u64,
-    document_lang: String,
-    scores: Vec<f32>,
-    langs: Vec<String>,
-    text: String,
-    url: String,
-    collection: String,
-}
-impl Document {
-    pub fn new() -> Self {
-        Self {
-            // Create with capacity is a little bit faster
-            // if we assume always working with large inputs
-            scores: Vec::with_capacity(500),
-            langs: Vec::with_capacity(500),
-            text: String::with_capacity(500000),
-            url: String::new(),
-            collection: String::new(),
-            document_lang: String::new(),
-            id: 0,
-        }
-    }
-    pub fn clear(&mut self) {
-        // Clear the content of the document
-        self.scores.clear();
-        self.langs.clear();
-        self.text.clear();
-        self.url.clear();
-        self.collection.clear();
-    }
-}
 
 fn main() -> Result<()> {
     let args = Args::parse();
