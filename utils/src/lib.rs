@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use regex::Regex;
 
 pub mod minhash_processor;
 pub mod indexer;
@@ -10,6 +11,9 @@ pub trait TextField {
     fn get_text(&self) -> String;
 }
 
+// Function called by serde
+// needed to skip fields that do not satisfy trait bounds
+fn default() -> Regex { Regex::new("").unwrap() }
 
 #[derive(Serialize, Deserialize)]
 pub struct Document {
@@ -20,10 +24,13 @@ pub struct Document {
     text: String,
     url: String,
     collection: String,
-//    correct_lang_pct: f32,
-//    average_score: f32,
-//    average_num_whitespace: f32,
-//    average_num_char: f32,
+    correct_lang_ratio: f32,
+    average_num_word: f32,
+    average_num_char: f32,
+    average_score: f32,
+
+    #[serde(skip, default = "default")]
+    count_word: Regex,
 }
 
 impl Document {
@@ -38,10 +45,12 @@ impl Document {
             collection: String::new(),
             document_lang: lang,
             id: 0,
-//            correct_lang_pct: -1.0,
-//            average_score: -1.0,
-//            average_num_whitespace: -1.0,
-//            average_num_char: -1.0,
+            correct_lang_ratio: -1.0,
+            average_score: -1.0,
+            average_num_word: -1.0,
+            average_num_char: -1.0,
+
+            count_word: Regex::new(r"\s+|$").expect("Error creating regex"),
         }
     }
 
@@ -54,16 +63,19 @@ impl Document {
         self.text.clear();
         self.url.clear();
         self.collection.clear();
-//        self.correct_lang_pct = -1.0;
-//        self.average_score = -1.0;
-//        self.average_num_whitespace = -1.0;
-//        self.average_num_char = -1.0;
+        self.correct_lang_ratio = -1.0;
+        self.average_score = -1.0;
+        self.average_num_word = -1.0;
+        self.average_num_char = -1.0;
     }
 
     pub fn is_empty(&self) -> bool {
         self.text.is_empty()
     }
 
+    // Add a tab separated line to the document
+    // Concatenate the text and metadata fields
+    // Update stats
     pub fn add_line(&mut self, parts: Vec<&str>) -> Result<(), String>{
         // Concatenate paragraphs with endline separators
         // to reconstruct the documents
@@ -89,14 +101,17 @@ impl Document {
         Ok(())
     }
 
-//    //TODO DO THIS WHILE READING THE DOC! not afterwards
-//    pub fn stats(&mut self) {
-//        let num_corr_langs = self.langs.iter()
-//            .fold(0, |acc, e| if e.eq(&self.document_lang) { acc + 1 } else { acc });
-//        self.correct_lang_pct = num_corr_langs as f32 / self.langs.len() as f32;
-//
-//
-//    }
+    pub fn stats(&mut self) {
+        let num_corr_langs = self.langs.iter()
+            .fold(0, |acc, e| if e.eq(&self.document_lang) { acc + 1 } else { acc });
+        self.correct_lang_ratio = num_corr_langs as f32 / self.langs.len() as f32;
+
+        let num_word = self.count_word.find_iter(&self.text).count();
+        self.average_num_word = num_word as f32 / self.langs.len() as f32;
+        let num_char = self.text.chars().count();
+        self.average_num_char = num_char as f32 / self.langs.len() as f32;
+        self.average_score = self.scores.iter().sum::<f32>() / self.scores.len() as f32;
+    }
 }
 
 impl TextField for Document {

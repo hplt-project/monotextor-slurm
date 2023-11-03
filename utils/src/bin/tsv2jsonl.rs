@@ -20,7 +20,7 @@ fn main() -> Result<()> {
     let mut writer = stdout.lock();
 
     let mut document = Document::new(args.language.to_owned());
-    let mut prev_url: String = String::new();
+    let mut prev_url: String = String::with_capacity(100);
 
     for (i, line_result) in reader.lines().enumerate() {
         if let Ok(line) = line_result {
@@ -30,6 +30,7 @@ fn main() -> Result<()> {
             // url has changed
             // current line is a different doc, print the previous doc
             if !prev_url.is_empty() && !prev_url.eq(&url) {
+                document.stats();
                 let json_result = serde_json::to_string(&document);
                 if let Ok(json) = json_result {
                     writer.write_fmt(format_args!("{}\n", json))?;
@@ -41,7 +42,8 @@ fn main() -> Result<()> {
                 document.clear();
             }
 
-            prev_url = parts[0].to_string();
+            prev_url.clear();
+            prev_url.push_str(parts[0]);
             // Add line to the document
             // if an error occurs, panic with the current line number
             if let Err(e) = document.add_line(parts) {
@@ -52,6 +54,7 @@ fn main() -> Result<()> {
 
     // print the last document
     if !document.is_empty() {
+        document.stats();
         let json_result = serde_json::to_string(&document);
         if let Ok(json) = json_result {
             writer.write_fmt(format_args!("{}\n", json))?;

@@ -40,7 +40,7 @@ fn tsv2jsonl() -> Result<(), Box<dyn std::error::Error>> {
 
     cmd
         .arg("-l")
-        .arg("fi")
+        .arg("en")
         .pipe_stdin("tests/example.tsv")?
         .assert()
         .success()

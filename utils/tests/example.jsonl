@@ -1,2 +1,2 @@
-{"id":0,"document_lang":"fi","scores":[0.77,0.823],"langs":["en","en"],"text":"This is a test\nMore Sentences","url":"url1","collection":"collection1"}
-{"id":1,"document_lang":"fi","scores":[0.0],"langs":["es"],"text":"Second document","url":"url2","collection":"collection1"}
+{"id":0,"document_lang":"en","scores":[0.77,0.823],"langs":["en","de"],"text":"This is a test\nMore Sentences","url":"url1","collection":"collection1","correct_lang_ratio":0.5,"average_num_word":3.0,"average_num_char":14.5,"average_score":0.79649997}
+{"id":1,"document_lang":"en","scores":[0.0],"langs":["es"],"text":"Second document","url":"url2","collection":"collection1","correct_lang_ratio":0.0,"average_num_word":2.0,"average_num_char":15.0,"average_score":0.0}
