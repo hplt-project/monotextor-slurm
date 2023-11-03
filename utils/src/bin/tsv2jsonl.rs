@@ -19,10 +19,8 @@ fn main() -> Result<()> {
     let stdout = io::stdout();
     let mut writer = stdout.lock();
 
-    let mut document = Document::new();
+    let mut document = Document::new(args.language.to_owned());
     let mut prev_url: String = String::new();
-    let mut doc_id: u64 = 0;
-    document.document_lang = args.language.to_owned();
 
     for (i, line_result) in reader.lines().enumerate() {
         if let Ok(line) = line_result {
@@ -37,38 +35,23 @@ fn main() -> Result<()> {
                     writer.write_fmt(format_args!("{}\n", json))?;
                 }
 
-                doc_id += 1;
+                // For each new document, we simply clear the contents
+                // to avoid allocating memory again
+                // then re-use the same object
                 document.clear();
-                document.id = doc_id;
-            }
-
-            // Concatenate paragraphs with endline separators
-            // to reconstruct the documents
-            if !document.text.is_empty() {
-                document.text.push_str("\n");
-            }
-            document.text.push_str(parts[1]);
-            // insert url and collection only once per doc
-            if document.url.is_empty() {
-                document.url = url.to_string();
-            }
-            if document.collection.is_empty() {
-                document.collection = parts[2].to_string();
-            }
-            document.langs.push(parts[3].to_string());
-            // parse scores to float
-            let score_result = parts[4].parse::<f32>();
-            match score_result {
-                Ok(score) => document.scores.push(score),
-                Err(_) => panic!("Error parsing '{}' to float in line {}", parts[4], i)
             }
 
             prev_url = parts[0].to_string();
+            // Add line to the document
+            // if an error occurs, panic with the current line number
+            if let Err(e) = document.add_line(parts) {
+                panic!("Error in line {}: {}", i, e);
+            }
         }
     }
 
     // print the last document
-    if !document.text.is_empty() {
+    if !document.is_empty() {
         let json_result = serde_json::to_string(&document);
         if let Ok(json) = json_result {
             writer.write_fmt(format_args!("{}\n", json))?;
