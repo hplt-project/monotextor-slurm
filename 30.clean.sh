@@ -33,7 +33,7 @@ if [[ ! $REPLY =~ [Yy] ]]; then echo; exit 1; fi
 echo
 
 JOB_ID=$(\
-SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x.out" \
+SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x-%A_%a.out" \
 sbatch --array=$INDEX \
     -J $L-clean --parsable \
     30.clean $L)
