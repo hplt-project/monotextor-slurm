@@ -1,0 +1,40 @@
+#!/bin/bash
+#SBATCH --job-name=clean
+#SBATCH --partition="small"
+#SBATCH --time=12:00:00
+##SBATCH --nodes=1
+##SBATCH --ntasks=128
+##SBATCH --mem=0
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=64
+#SBATCH --mem-per-cpu=1750
+#SBATCH --output=logs/%x-%A_%a.out
+module load cray-python/3.9.12.1
+module load parallel
+source .env
+set -euo pipefail
+
+L=$1
+INPUT=$WORKSPACE/dedup/$L/${L}_$SLURM_ARRAY_TASK_ID.jsonl.zst
+OUTPUT=$WORKSPACE/clean/$L/${L}_$SLURM_ARRAY_TASK_ID.jsonl.zst
+mkdir -p $WORKSPACE/clean/$L
+
+case "$L" in
+    zh | ja | ko | th)
+        FILTER_PARAMS="-a -z";;
+    uz | sw)
+        FILTER_PARAMS="-e -w -m";;
+    *)
+        FILTER_PARAMS="-a";;
+esac
+
+# Do not use -k, we don't care if documents appear in
+# different order
+zstdcat $INPUT \
+| parallel --pipe --halt now,fail=1 \
+    -j$SLURM_CPUS_ON_NODE --block 10M \
+    python filter-docs.py $FILTER_PARAMS \
+| zstdmt -T64 -10 \
+>$OUTPUT.tmp
+
+mv $OUTPUT.tmp $OUTPUT

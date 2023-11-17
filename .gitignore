@@ -3,6 +3,7 @@ status
 data/
 logs/
 *.swp
+adult_domains
 
 # Cargo generated files
 utils/target
