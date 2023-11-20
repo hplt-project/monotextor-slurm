@@ -10,12 +10,11 @@ NUM_JOBS=60
 TIME_RETRY=10m
 
 L=$1
-INDEX=$2
 
-if [ "$INDEX" == "all" ]; then
+if [ $# -lt 2 ] || [ "$2" == "all" ]; then
 # List all the batches that need to be processed (size of the job array)
     INDEX=1-$(ls -1 $WORKSPACE/dedup/$L/${L}_*.zst | sed -E 's#.*/\w{2,3}_([0-9]+)\.jsonl\.zst#\1#' | sort -n | tail -1)
-elif [ "$INDEX" == "failed" ]; then
+elif [ $# -gt 2 ] && [ "$INDEX" == "failed" ]; then
 # Select only failed jobs (timeout, oom and failed status)
 # Create a list of batch id's separated by comma
     JOB=$3
@@ -25,6 +24,8 @@ elif [ "$INDEX" == "failed" ]; then
         | sed -E 's/[0-9]+_([0-9]+)\|.*/\1/g' \
         | paste -sd','
     )
+else
+    INDEX=$2
 fi
 
 echo "Job array of index $INDEX"
