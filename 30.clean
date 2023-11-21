@@ -24,6 +24,8 @@ case "$L" in
         FILTER_PARAMS="-a -z";;
     uz | sw)
         FILTER_PARAMS="-e -w -m";;
+    fi)
+        FILTER_PARAMS="-a -E";;
     *)
         FILTER_PARAMS="-a";;
 esac

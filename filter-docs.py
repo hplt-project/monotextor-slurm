@@ -15,6 +15,7 @@ realpath = os.path.dirname(os.path.realpath(__file__))
 parser = ArgumentParser()
 parser.add_argument('-a','--all', action='store_true', help="Use all filters")
 parser.add_argument('-e','--explicit', action='store_true', help="Remove explicit content with UT1 adult list")
+parser.add_argument('-E','--extended_explicit', action='store_true', help="Extended explicit url block looking for banned patterns")
 parser.add_argument('-w','--avg_words', action='store_true', help="Remove docs that do not meet the minimum word average per segment")
 parser.add_argument('-m','--minimum', action='store_true', help="Remove docs that do not meet the minimum size")
 parser.add_argument('-l','--language', action='store_true', help="Remove docs that do not meet the minimum correct language pct")
@@ -26,6 +27,7 @@ if args.all:
     args.avg_words = True
     args.minimum = True
     args.language = True
+
 #print(args, file=sys.stderr)
 
 extract_domain = regex.compile("^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/\n]+)(.*)", regex.I)
@@ -35,12 +37,13 @@ MIN_LENGTH = 200
 MIN_LANG_RATIO = 0.2
 MIN_AVG_WORDS = 5
 MIN_AVG_CHARS = 10
+BLOCKED_PATTERNS = ('porn', 'sex', 'tube', 'cams', 'camgirls', 'mature')
 
 # Load adult domains
 with open(f'./adult_domains') as f:
     adult_doms = set(i.strip() for i in f)
 
-def is_adult(url):
+def is_adult(url, extended=False):
     domain = extract_domain.sub(r"\1", url)
     # We check removing subdomains
     # this may help match sites with language as a subdomain in the url
@@ -51,7 +54,7 @@ def is_adult(url):
 
     if domain in adult_doms or shorter1 in adult_doms or shorter2 in adult_doms:
         return True
-    if 'porn' in url:
+    if extended and any(i in url for i in BLOCKED_PATTERNS):
         return True
     return False
 
@@ -74,7 +77,7 @@ def filter_doc(args, doc):
     avg_correct_lang = sum(1 for l in doc['langs'] if l == doc['document_lang']) / n_segs
 
     # Filter criteria
-    if args.explicit and is_adult(doc['url']):
+    if args.explicit and is_adult(doc['url'], args.extended_explicit):
         return "adult_ut1"
 
     if args.avg_words:
