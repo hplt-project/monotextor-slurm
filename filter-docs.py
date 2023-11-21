@@ -74,7 +74,8 @@ def filter_doc(args, doc):
     avg_seg_words = sum(words_dist) / len(segs)
 
     # LM scores and langid means
-    avg_correct_lang = sum(1 for l in doc['langs'] if l == doc['document_lang']) / n_segs
+    # split lang by underscore to discard possible script suffix
+    avg_correct_lang = sum(1 for l in doc['langs'] if l.split('_')[0] == doc['document_lang']) / n_segs
 
     # Filter criteria
     if args.explicit and is_adult(doc['url'], args.extended_explicit):
