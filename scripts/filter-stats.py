@@ -12,5 +12,5 @@ for i, line in enumerate(sys.stdin):
     stats[reason] += 1
 
 total = sum(stats.values())
-for reason, count in stats.items():
+for reason, count in sorted(stats.items()):
     print(f"{reason}\t{count/total*100:.2f}%\t{count}")
