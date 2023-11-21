@@ -46,8 +46,8 @@ def is_adult(url):
     # this may help match sites with language as a subdomain in the url
     # or other subdomains not included in the list
     # this should be safe, as the list won't contain things like just "blogspot.com" or just ".com"
-    shorter1 = remove_subdomain.sub(domain, '', count=1)
-    shorter2 = remove_subdomain.sub(domain, '', count=2)
+    shorter1 = remove_subdomain.sub('', domain, count=1)
+    shorter2 = remove_subdomain.sub('', domain, count=2)
 
     if domain in adult_doms or shorter1 in adult_doms or shorter2 in adult_doms:
         return True
