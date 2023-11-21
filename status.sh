@@ -33,15 +33,28 @@ for c in $colls; do
         continue
     fi
 
+    dir=$WORKSPACE/dedup/$L
 
-    dedup_tmp=$(ls -1 $dir/dedup.*.jsonl.zst.tmp | wc -l)
-    query=$(ls -1 $dir/queries*.zst | wc -l)
-    if [ -f $dir/dedup.1.jsonl.zst ] && [ $dedup_tmp -eq 0 ] && [ $query -eq 0 ]
+    dedup_tmp=$(ls -1 $dir/*.jsonl.zst.tmp | wc -l)
+    if ! [ -f $dir/${L}_1.jsonl.zst ] || ! [ $dedup_tmp -eq 0 ]
     then
-        printf "deduped"
-    else
-        printf "scored"
+        printf "scored\t"
+        continue
     fi
+
+    dir=$WORKSPACE/clean/$L
+
+    clean_tmp=$(ls -1 $dir/*.jsonl.zst.tmp | wc -l)
+    stats=$(ls -1 $dir/${L}_stats | wc -l)
+    if [ -f $dir/${L}_1.jsonl.zst ] && [ $clean_tmp -eq 0 ] && [ $stats -eq 1 ]
+    then
+        printf "cleaned\tcleaned\tcleaned\tcleaned\n"
+        exit 0
+    else
+        printf "deduped\tdeduped\tdeduped\tdeduped\n"
+        exit 0
+    fi
+
     printf "\t"
 done
 echo
