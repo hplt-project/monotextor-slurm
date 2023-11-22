@@ -15,7 +15,7 @@ input_dir="dedup"
 
 if [ $# -lt 2 ] || [ "$2" == "all" ]; then
 # List all the batches that need to be processed (size of the job array)
-    if [ $# -lt 3 ] || [ "$3" == "external" ]; then
+    if [ $# -ge 3 ] && [ "$3" == "external" ]; then
         external="external"
         input_dir=external
     fi
