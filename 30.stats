@@ -11,8 +11,12 @@ source .env
 set -euo pipefail
 
 L=$1
-INPUT=$WORKSPACE/clean/$L/
-OUTPUT=$WORKSPACE/clean/$L/${L}_stats
+input_dir=clean
+if [ $# -ge 2 ] && [ "$2" == "external" ]; then
+    input_dir=external_clean
+fi
+INPUT=$WORKSPACE/$input_dir/$L/
+OUTPUT=$WORKSPACE/$input_dir/$L/${L}_stats
 
 # Do not use -k, we don't care if documents appear in
 # different order

@@ -1,0 +1,38 @@
+#!/bin/bash
+#SBATCH --job-name=external
+#SBATCH --partition="small"
+#SBATCH --time=12:00:00
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=32
+#SBATCH --mem-per-cpu=1750
+#SBATCH --output=logs/%x.out
+
+set -euo pipefail
+shopt -s failglob
+source .env
+
+L=$1
+INPUT=/scratch/project_465000498/external_contributions/nb/NCC_LTG/data/
+OUTPUT=$WORKSPACE/external/$L
+mkdir -p $OUTPUT
+
+# Read the split output, compress it to temp, then move
+compress-batch(){
+    local file=$1
+    # Remove 0s prefix
+    local name=$(echo $file | sed -E "s/\_0+/_/g")
+
+    # compress stdin, write to a temp
+    zstd -T$SLURM_CPUS_ON_NODE -10 >$name.jsonl.zst.tmp
+
+    # remove temp suffix
+    mv $name.jsonl.zst.tmp $name.jsonl.zst
+}
+export -f compress-batch
+
+pigz -dc $INPUT/*.gz \
+| grep -v '"id": \?"hplt' \
+| split - \
+    --numeric-suffixes=1 -a 8 -C 60G \
+    --filter='compress-batch $FILE' \
+    $OUTPUT/${L}_

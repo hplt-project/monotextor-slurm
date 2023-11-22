@@ -60,7 +60,6 @@ def is_adult(url, extended=False):
 
 
 def filter_doc(args, doc):
-    url = doc['url']
     text = doc['text']
 
     segs = text.split('\n')
@@ -75,7 +74,11 @@ def filter_doc(args, doc):
 
     # LM scores and langid means
     # split lang by underscore to discard possible script suffix
-    avg_correct_lang = sum(1 for l in doc['langs'] if l.split('_')[0] == doc['document_lang']) / n_segs
+    if 'langs' in doc and doc['langs']:
+        avg_correct_lang = sum(1 for l in doc['langs'] if l.split('_')[0] == doc['document_lang']) / n_segs
+    else:
+        # If there is no langs field and correct lang is requested, please crash
+        avg_correct_lang = None
 
     # Filter criteria
     if args.explicit and is_adult(doc['url'], args.extended_explicit):
