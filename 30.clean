@@ -30,7 +30,7 @@ mkdir -p $WORKSPACE/$output_dir/$L
 case "$L" in
     zh | ja | ko | th)
         FILTER_PARAMS="-a -z";;
-    uz | sw | so)
+    ms | id | uz | sw | so)
         FILTER_PARAMS="-e -w -m";;
     fi)
         FILTER_PARAMS="-a -E";;
