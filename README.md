@@ -36,7 +36,7 @@ After that, another job array is submitted where each job is a serial job that c
 
 ### Near-deduplication
 Near-deduplication is performed at document level and across all copllections.
-For each language, a [MinHash LSH](https://ekzhu.com/datasketch/lsh.html) index is built using a modified version of [gaoya](https://github.com/ZJaume/gaoya/tree/large_scale) library to be able to work with larger scale data.
+For each language, a [MinHash LSH](https://ekzhu.com/datasketch/lsh.html) index is built using a modified version of [gaoya](https://github.com/ZJaume/gaoya/tree/minhash_deduper) library to be able to work with larger scale data.
 After an index containing the hashes of all the documents is built, the connected components are computed with [Union-Find](https://en.wikipedia.org/wiki/Disjoint-set_data_structure) algorithm.
 Then all the unique documents and one document per cluster are kept.
 The input of this step are JSONL files and the output is the same format with near-duplicates removed, with all the collections merged and each language files being splitted again.
