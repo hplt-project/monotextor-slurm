@@ -40,7 +40,7 @@ MIN_AVG_CHARS = 10
 BLOCKED_PATTERNS = ('porn', 'sex', 'tube', 'cams', 'camgirls', 'mature')
 
 # Load adult domains
-with open(f'./adult_domains') as f:
+with open(f'./blocklists/adult_domains') as f:
     adult_doms = set(i.strip() for i in f)
 
 def is_adult(url, extended=False):

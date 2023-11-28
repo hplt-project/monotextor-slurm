@@ -4,7 +4,7 @@ stats
 data/
 logs/
 *.swp
-adult_domains
+blocklists/adult_domains
 
 # Cargo generated files
 utils/target
