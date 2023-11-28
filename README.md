@@ -54,6 +54,25 @@ Otherwise tens of terabytes will be needed if a single process indexes all the b
 With this approach, each job is computing its own Union-Find vector and storing it in disk.
 The dedup step is performed the same way, but instead all the vectors are read and merged at the beginning.
 
+### Cleaning
+The process of cleaning adds a new metadata field (`"filter"`) to each document, that indicates if the document should be discarded or not and if not, the discarding reason.
+Possible values are:
+ - `keep`: the document does not match with any of the filtering criteria.
+ - `adult_ut1`: the url of the document matches one of the domains in UT1 adult list. To match, the full domain extracted from the url and looked for in the table. If it does not match, a couple it retries removing the subdomains.
+ - `length_XX`: the text of the document has less than XX characters. Default: 200.
+ - `lang_ratio_XX: the ratio of languages by segment that match the document language is less than XX. Default: 0.2 (at least 20% of the segment languages are the same as document language).
+ - `word\_avg\_X`: the average number of words per segment is less than X. Default: 5.
+ - `char\_avg\_X`: the average number of characters per segment is less than X. This is used for Chinese, Japanese and Korean. Default: 10.
+
+There are languages considered exceptions for the language ratio rule and it is disabled.
+This is mainly because some languages either have poor language identification at segment level or the the majority of documents have a very high portion of boilerplate and/or English.
+Sometimes both cases.
+Therefore language ratio rule ends up being too aggressive.
+These language exceptions are:
+ - Afrikaans, Swahili, Somali and Tagalog for the reasons explained above.
+ - Uzbek segment level language identification is tagging all the Cyrillic as other languages.
+ - Malay and Indonesian tend to mix up with each other.
+
 ## Install
 Install requirements inside your virtual environment.
 ```
