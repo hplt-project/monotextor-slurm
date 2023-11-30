@@ -17,11 +17,9 @@ set -euo pipefail
 L=$1
 input_dir=dedup
 output_dir=clean
-external=false
-if [ $# -ge 2 ] && [ "$2" == "external" ]; then
+if [ "$EXTERNAL" = true ]; then
     input_dir=external
     output_dir=external_clean
-    external=true
 fi
 INPUT=$WORKSPACE/$input_dir/$L/${L}_$SLURM_ARRAY_TASK_ID.jsonl.zst
 OUTPUT=$WORKSPACE/$output_dir/$L/${L}_$SLURM_ARRAY_TASK_ID.jsonl.zst
@@ -37,8 +35,11 @@ case "$L" in
     *)
         FILTER_PARAMS="-a";;
 esac
-if [ "$external" = true ]; then
+if [ "$EXTERNAL" = true ]; then
     FILTER_PARAMS="-w -m";
+fi
+if [ "$DISCARD" = true ]; then
+    FILTER_PARAMS="$FILTER_PARAMS -f";
 fi
 
 # Do not use -k, we don't care if documents appear in

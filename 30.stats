@@ -12,14 +12,12 @@ set -euo pipefail
 
 L=$1
 input_dir=clean
-if [ $# -ge 2 ] && [ "$2" == "external" ]; then
+if [ $EXTERNAL = true ]; then
     input_dir=external_clean
 fi
 INPUT=$WORKSPACE/$input_dir/$L/
 OUTPUT=$WORKSPACE/$input_dir/$L/${L}_stats
 
-# Do not use -k, we don't care if documents appear in
-# different order
 zstdcat $INPUT/${L}_*.jsonl.zst \
 | python scripts/filter-stats.py \
 >$OUTPUT.tmp

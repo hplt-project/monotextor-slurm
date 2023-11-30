@@ -20,7 +20,8 @@ parser.add_argument('-w','--avg_words', action='store_true', help="Remove docs t
 parser.add_argument('-m','--minimum', action='store_true', help="Remove docs that do not meet the minimum size")
 parser.add_argument('-l','--language', action='store_true', help="Remove docs that do not meet the minimum correct language pct")
 parser.add_argument('-z','--cjk', action='store_true', help="Process CJK language")
-parser.add_argument('-s','--stats', action='store_true', help="Do not filter just print stats+docs for debugging")
+parser.add_argument('-f','--filter', action='store_true', help="Discard documents instead of adding filter metadata.")
+
 args = parser.parse_args()
 if args.all:
     args.explicit = True
@@ -101,5 +102,12 @@ def filter_doc(args, doc):
 for line in sys.stdin:
     doc = orjson.loads(line)
     reason = filter_doc(args, doc)
-    doc["filter"] = reason
-    print(orjson.dumps(doc).decode('utf-8'))
+
+    # If not discarding documents, just add metadata to the json and print
+    # otherwise just print the document in case "keep" reason
+    # with other filter reasons, just do nothing
+    if not args.filter:
+        doc["filter"] = reason
+        print(orjson.dumps(doc).decode('utf-8'))
+    elif reason == "keep":
+        print(line, end='')
