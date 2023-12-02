@@ -1,9 +1,9 @@
 use gaoya::minhash::{MinHasher32, MinHasher};
 use gaoya::text::whitespace_split;
-use fnv::FnvBuildHasher;
 use shingles::Shingles;
 use clap::ArgEnum;
 use seahash;
+use ahash;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum)]
 pub enum Tokenization {
@@ -22,7 +22,7 @@ pub enum Tokenization {
 //}
 
 pub struct MinHashProcessor {
-    minhasher: MinHasher32<FnvBuildHasher>,
+    minhasher: MinHasher32<ahash::RandomState>,
     tokenization: Tokenization,
     window_size: usize,
 }
@@ -31,7 +31,7 @@ impl MinHashProcessor {
     pub fn new(permutations: usize, tokenization: Tokenization, window_size: usize)
             -> MinHashProcessor {
         Self {
-            minhasher: MinHasher32::new(permutations),
+            minhasher: MinHasher32::new_with_hasher(permutations, ahash::RandomState::with_seed(3)),
             tokenization: tokenization,
             window_size: window_size,
         }
