@@ -55,7 +55,7 @@ With this approach, each job is computing its own Union-Find vector and storing 
 The dedup step is performed the same way, but instead all the vectors are read and merged at the beginning.
 
 ### Filtering
-The process of cleaning adds a new metadata field (`"filter"`) to each document that indicates if the document should be discarded or not and when not, the discarding reason.
+The process of cleaning adds a new metadata field (`"filter"`) to each document that indicates if the document should be kept or not, and when not, indicate the discarding reason.
 Possible values are:
  - `keep`: the document does not match any of the filtering criteria.
  - `adult_ut1`: the url of the document matches one of the domains in UT1 adult list. To perform matches, full domains are searched in the list. If they don't not match, a second iteration tries search by removing the subdomains.
