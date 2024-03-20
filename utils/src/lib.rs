@@ -49,13 +49,13 @@ impl Document {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.text.is_empty()
+        self.text.is_empty() && self.scores.is_empty() && self.langs.is_empty() && self.url.is_empty()
     }
 
     pub fn add_line(&mut self, parts: Vec<&str>) -> Result<(), String>{
         // Concatenate paragraphs with endline separators
         // to reconstruct the documents
-        if !self.text.is_empty() {
+        if !self.is_empty() {
             self.text.push_str("\n");
         }
         self.text.push_str(parts[1]);
