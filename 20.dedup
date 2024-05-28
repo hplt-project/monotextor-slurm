@@ -3,8 +3,8 @@
 #SBATCH --partition="small"
 #SBATCH --time=72:00:00
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=32
-#SBATCH --mem-per-cpu=5200
+#SBATCH --cpus-per-task=128
+#SBATCH --mem-per-cpu=1750
 #SBATCH --output=logs/%x.out
 
 set -euo pipefail
@@ -28,7 +28,7 @@ compress-batch(){
     local name=$(echo $file | sed -E "s/\_0+/_/g")
 
     # compress stdin, write to a temp
-    zstd -T$SLURM_CPUS_PER_TASK -10 >$name.jsonl.zst.tmp
+    zstd -T$SLURM_CPUS_ON_NODE -10 >$name.jsonl.zst.tmp
 
     # remove temp suffix
     mv $name.jsonl.zst.tmp $name.jsonl.zst
