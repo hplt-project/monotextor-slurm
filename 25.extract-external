@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=external
+#SBATCH --job-name=extract-external
 #SBATCH --partition="small"
 #SBATCH --time=12:00:00
 #SBATCH --ntasks=1
@@ -14,6 +14,7 @@ source .env
 L=$1
 #INPUT=/scratch/project_465000498/external_contributions/nb/NCC_LTG/data/
 INPUT=/scratch/project_465000498/external_contributions/et
+#INPUT=/scratch/project_465000498/external_contributions/zh
 OUTPUT=$WORKSPACE/external/$L
 mkdir -p $OUTPUT
 
@@ -31,7 +32,11 @@ compress-batch(){
 }
 export -f compress-batch
 
-pigz -dc $INPUT/*.gz \
+files=$(ls -1 $INPUT/*/*.jsonl.gz | grep -vi 'literature_contemporary')
+
+pigz -dc $files \
+| jq -c \
+| grep -v '�' \
 | grep -v '"id": \?"hplt' \
 | split - \
     --numeric-suffixes=1 -a 8 -C 60G \
