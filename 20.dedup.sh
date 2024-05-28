@@ -7,17 +7,21 @@ set -euo pipefail
 
 L=$1
 #COLL=$2
+dedup_dir=dedup
 mkdir -p $SLURM_LOGS_DIR
 for i in ${!COLLECTIONS[@]}; do
     echo ${COLLECTIONS[$i]}/$L
 done
 echo "Deduping ${!COLLECTIONS[@]}"
 
-if [ -s $WORKSPACE/dedup/$L/clusters.zst ] || [ -s $WORKSPACE/dedup/$L/clusters.17.zst ]; then
+if [ -s $WORKSPACE/$dedup_dir/$L/clusters.zst ] || [ -s $WORKSPACE/$dedup_dir/$L/clusters.17.zst ]; then
     echo "Cluster file already exists, submitting dedup only"
     confirm
     SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x.out" \
     sbatch -J $L-dedup 20.dedup $L
+    exit 0
+else
+    echo "Not submitting $L"
     exit 0
 fi
 
