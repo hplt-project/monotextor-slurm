@@ -9,7 +9,7 @@ set -euo pipefail
 
 COLL=$1
 mkdir -p $SLURM_LOGS_DIR
-echo ${COLLECTIONS[$COLL]}
+echo ${COLLECTIONS[$COLL]} | tr ' ' '\n'
 
 jobid=$(\
 SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x.out" \

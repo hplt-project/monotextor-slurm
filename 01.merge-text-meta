@@ -18,11 +18,13 @@ mkdir -p $OUTPUT_DIR
 
 echo Num CPUS $SLURM_CPUS_ON_NODE
 run-merge (){
-    local dir=$1
+    local coll=$1
+    local dir=$2
+    local dirnum=`basename $dir`
     mkdir -p $OUTPUT_DIR/$dir
-    python scripts/merge-meta-text.py $INPUT_DIR/$dir $OUTPUT_DIR/$dir
+    python scripts/merge-meta-text.py $coll $dir $OUTPUT_DIR/$dirnum
 }
 export -f run-merge
 
 parallel -j$SLURM_CPUS_ON_NODE --will-cite --halt now,fail=1 \
-    run-merge {} ::: `ls -1 $INPUT_DIR/`
+    run-merge $COLL {} ::: `find $INPUT_DIR* -maxdepth 1 -mindepth 1 -type d`
