@@ -1,0 +1,26 @@
+#!/bin/bash
+#SBATCH --job-name=split-lang
+#SBATCH --partition="small"
+#SBATCH --time=72:00:00
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=12
+#SBATCH --mem-per-cpu=1750
+#SBATCH --output=logs/%x.out
+module load cray-python/3.9.12.1
+source .env
+set -euo pipefail
+
+COLL=$1
+if [[ ! -n ${COLLECTIONS[$COLL]} ]]; then
+    echo "'$COLL' does not exist"
+    exit 1
+fi
+export INPUT_DIR=$WORKSPACE/merged/$COLL
+export OUTPUT_DIR=$WORKSPACE/$COLL
+mkdir -p $OUTPUT_DIR
+
+# split documents in lang folders
+python scripts/split-lang.py $OUTPUT_DIR $INPUT_DIR/*/docs.zst
+
+# clean the merged directory, it is just intermediate
+rm -r $WORKSPACE/merged/$COLL

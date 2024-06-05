@@ -1,18 +1,24 @@
 #!/bin/bash
 # Submit merge-batching jobs
-# - merge warc2text batches
-# - decode base64 text
-# - re-batching with one paragraph per line
-# to a size appropiate for processing in this pipeline
+# - merge metadata text and lang json
+# - split by language folder
 
 source .env
 source .checks
 set -euo pipefail
 
-L=$1
-COLL=$2
+COLL=$1
 mkdir -p $SLURM_LOGS_DIR
-echo ${COLLECTIONS[$COLL]}/$L
+echo ${COLLECTIONS[$COLL]}
 
+jobid=$(\
 SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x.out" \
-sbatch -J $L-$COLL-merge-batching --parsable 00.merge-batching $L $COLL
+sbatch -J $COLL-merge-text-meta --parsable 01.merge-text-meta $COLL)
+echo Submitted batch job $jobid
+
+jobid=$(\
+SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x.out" \
+sbatch -J $COLL-split-lang \
+    --parsable -d afterok:$jobid \
+    02.split-lang $COLL)
+echo Submitted batch job $jobid
