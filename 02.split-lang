@@ -20,6 +20,7 @@ export OUTPUT_DIR=$WORKSPACE/$COLL
 mkdir -p $OUTPUT_DIR
 
 # split documents in lang folders
+$PROFILER \
 python scripts/split-lang.py $OUTPUT_DIR $INPUT_DIR/*/docs.zst
 
 # clean the merged directory, it is just intermediate

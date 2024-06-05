@@ -9,3 +9,4 @@ confirm() {
     if [[ ! $REPLY =~ [Yy] ]]; then echo; exit 0; fi
     echo
 }
+export PROFILER="/usr/bin/time -v"

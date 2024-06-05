@@ -26,5 +26,6 @@ run-merge (){
 }
 export -f run-merge
 
+$PROFILER \
 parallel -j$SLURM_CPUS_ON_NODE --will-cite --halt now,fail=1 \
     run-merge $COLL {} ::: `find $INPUT_DIR* -maxdepth 1 -mindepth 1 -type d`
