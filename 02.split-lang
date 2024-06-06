@@ -21,7 +21,7 @@ mkdir -p $OUTPUT_DIR
 
 # split documents in lang folders
 $PROFILER \
-python scripts/split-lang.py $OUTPUT_DIR $INPUT_DIR/*/docs.zst
+python scripts/split-lang.py $OUTPUT_DIR $INPUT_DIR/*.docs.zst
 
 # clean the merged directory, it is just intermediate
 rm -r $WORKSPACE/merged/$COLL

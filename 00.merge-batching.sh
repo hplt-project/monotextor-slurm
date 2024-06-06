@@ -10,6 +10,9 @@ set -euo pipefail
 COLL=$1
 mkdir -p $SLURM_LOGS_DIR
 echo ${COLLECTIONS[$COLL]} | tr ' ' '\n'
+batches=$(find ${COLLECTIONS[$COLL]}* -maxdepth 1 -mindepth 1 -type d)
+count=$(echo $batches | wc -w)
+echo Num batches $count
 
 jobid=$(\
 SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x.out" \

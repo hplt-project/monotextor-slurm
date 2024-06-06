@@ -12,7 +12,7 @@ source .env
 set -euo pipefail
 
 COLL=$1
-export INPUT_DIR=${COLLECTIONS[$COLL]}
+INPUT_DIR=${COLLECTIONS[$COLL]}
 export OUTPUT_DIR=$WORKSPACE/merged/$COLL
 mkdir -p $OUTPUT_DIR
 
@@ -20,12 +20,13 @@ echo Num CPUS $SLURM_CPUS_ON_NODE
 run-merge (){
     local coll=$1
     local dir=$2
-    local dirnum=`basename $dir`
-    mkdir -p $OUTPUT_DIR/$dir
-    python scripts/merge-meta-text.py $coll $dir $OUTPUT_DIR/$dirnum
+    local filenum=$3
+    python scripts/merge-meta-text.py $coll $dir $OUTPUT_DIR/$filenum
 }
 export -f run-merge
 
+# Run every batch in parallel
+# each batch in the output will be renamed to the job number
 $PROFILER \
 parallel -j$SLURM_CPUS_ON_NODE --will-cite --halt now,fail=1 \
-    run-merge $COLL {} ::: `find $INPUT_DIR* -maxdepth 1 -mindepth 1 -type d`
+    run-merge $COLL {} {\#} ::: `find $INPUT_DIR* -maxdepth 1 -mindepth 1 -type d`

@@ -4,13 +4,13 @@ import sys
 
 collection = sys.argv[1]
 input_dir = sys.argv[2]
-output_dir = sys.argv[3]
+output_file = sys.argv[3]
 level = 10
 # doing compression in separated threads is much faster
 compressor = zstandard.ZstdCompressor(level=level, threads=4)
 
 with zstandard.open(f'{input_dir}/text.zst', 'rt', errors='strict') as text_file, \
-        zstandard.open(f'{output_dir}/docs.zst', 'wb', cctx=compressor) as out_file, \
+        zstandard.open(f'{output_file}.docs.zst', 'wb', cctx=compressor) as out_file, \
         zstandard.open(f'{input_dir}/metadata.zst', 'rt', errors='strict') as meta_file, \
         zstandard.open(f'{input_dir}/lang.zst', 'rt', errors='strict') as lang_file:
     for line in meta_file:
