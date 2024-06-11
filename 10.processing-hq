@@ -1,0 +1,31 @@
+#!/bin/bash
+#SBATCH --job-name=processing
+#SBATCH --partition="standard"
+#SBATCH --time=12:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=128
+#SBATCH --mem=0
+#SBATCH --output=logs/%x-%A_%a.out
+module load cray-python/3.9.12.1
+module load parallel
+source .env
+source .checks
+set -euo pipefail
+
+IFS=" " read -ra args <<< $HQ_ENTRY
+L=${args[0]}
+COLL=${args[1]}
+batchid=${args[2]}
+INPUT=$WORKSPACE/$COLL/$L/batch_$batchid.jsonl.zst
+OUTPUT=$WORKSPACE/$COLL/$L/scored_$batchid.jsonl.zst
+
+zstdcat $INPUT \
+| $PROFILER parallel --pipe -k \
+    --halt now,fail=1 \
+    -j$HQ_CPUS --block 10M \
+    python filter-docs.py -a \
+| zstdmt -T64 -10 \
+> $OUTPUT.tmp \
+
+
+mv $OUTPUT.tmp $OUTPUT
