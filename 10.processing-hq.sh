@@ -5,31 +5,34 @@
 source .env
 source .checks
 set -euo pipefail
-MAX_JOBS=120
-NUM_JOBS=60
-TIME_RETRY=10m
 
-COLL=$1
-echo ${COLLECTIONS[$COLL]}
-
+# Create an allocation queue that will allocate a full node for each worker
+# each worker will process one task
 hq alloc add slurm --name $COLL --time-limit 5m \
-    --workers-per-alloc 1 --max-worker-count 1 \
-    -- -p debug -A $SBATCH_ACCOUNT
+    --workers-per-alloc 1 --max-worker-count 2 --cpus 128 \
+    -- -p debug -A $SBATCH_ACCOUNT \
+    --cpus-per-task 128 --ntasks 1 --mem-per-cpu 1750 \
+    -o "$SLURM_LOGS_DIR/hq-processing-%x.out" -e "$SLURM_LOGS_DIR/hq-worker-processing-%x.err"
+# obtain the allocation queue id
 qid=$(hq alloc list --output-mode json | jq -cr ".[] | select(.name == \"$COLL\") | .id" | head -1)
 
+# Create the task list
 entries=$(mktemp); trap "rm $entries" EXIT
-for lang in cat_Latn mlt_Latn
+#for coll in `echo ${!COLLECTIONS[@]} | tr ' ' '\n' | sort`
+for coll in cc13
 do
-    #hq submit --array 1 --name $COLL-$lang-processing \
-    #    --log=$SLURM_LOGS_DIR/$COLL-$lang-processing.log \
-    #    ./10.processing-hq $lang $COLL
-    echo "$lang $COLL 1"
-done >$entries
+    for lang in cat_Latn mlt_Latn eng_Latn
+    do
+        echo "$lang $COLL 1"
+    done
+done | tee >(cat) >$entries
 
-cat $entries
+set +e # remove strict mode, so if job fails, script does not finish and the queue can be closed afterwards
 hq submit --each-line $entries \
-    --progress --max-fails 0 \
-    --log=hqlog \
+    --cpus 128 \
+    --progress --log=$SLURM_LOGS_DIR/hq-processing.log \
+    --max-fails=0 --crash-limit=1 \
     bash 10.processing-hq
 
+# finish que allocation queue
 hq alloc remove --force $qid

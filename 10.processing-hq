@@ -1,13 +1,4 @@
 #!/bin/bash
-#SBATCH --job-name=processing
-#SBATCH --partition="standard"
-#SBATCH --time=12:00:00
-#SBATCH --nodes=1
-#SBATCH --ntasks=128
-#SBATCH --mem=0
-#SBATCH --output=logs/%x-%A_%a.out
-module load cray-python/3.9.12.1
-module load parallel
 source .env
 source .checks
 set -euo pipefail
@@ -19,13 +10,23 @@ batchid=${args[2]}
 INPUT=$WORKSPACE/$COLL/$L/batch_$batchid.jsonl.zst
 OUTPUT=$WORKSPACE/$COLL/$L/scored_$batchid.jsonl.zst
 
+echo running $L $COLL $batchid
+
+# Run annotation parallel loop
+# singularity container will run gnu parallel to avoid many containers being launched
+# container needs the current dir to be mounted
 zstdcat $INPUT \
-| $PROFILER parallel --pipe -k \
+| $PROFILER \
+singularity exec --bind $(pwd -P) --pwd $(pwd -P) monotextor.sif \
+parallel --pipe -k \
     --halt now,fail=1 \
-    -j$HQ_CPUS --block 10M \
-    python filter-docs.py -a \
+    -j64 --block 10M python scripts/annotate.py \
 | zstdmt -T64 -10 \
 > $OUTPUT.tmp \
+|| {
+    echo "Error in pipeline: ${PIPESTATUS[@]}" >&2
+    exit 1
+}
 
 
 mv $OUTPUT.tmp $OUTPUT
