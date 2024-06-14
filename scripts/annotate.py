@@ -6,9 +6,11 @@ import re
 import os
 
 from unicodedata import category as cat
+from docscorer import DocumentScorer
+import fasttext
 import orjson
 import regex
-
+fasttext.FastText.eprint = lambda x: None
 
 realpath = os.path.dirname(os.path.realpath(__file__))
 
@@ -20,7 +22,6 @@ parser.add_argument('-w','--avg_words', action='store_true', help="Remove docs t
 parser.add_argument('-m','--minimum', action='store_true', help="Remove docs that do not meet the minimum size")
 parser.add_argument('-l','--language', action='store_true', help="Remove docs that do not meet the minimum correct language pct")
 parser.add_argument('-z','--cjk', action='store_true', help="Process CJK language")
-parser.add_argument('-f','--filter', action='store_true', help="Discard documents instead of adding filter metadata.")
 
 args = parser.parse_args()
 if args.all:
@@ -29,10 +30,14 @@ if args.all:
     args.minimum = True
     args.language = True
 
-#print(args, file=sys.stderr)
+#print(sys.argv, file=sys.stderr)
 
 extract_domain = regex.compile("^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/\n]+)(.*)", regex.I)
 remove_subdomain = re.compile(".*?\.")
+scorer = DocumentScorer()
+langid = fasttext.load_model('lid193_merged_arabics.bin')
+# from https://github.com/hplt-project/warc2text-runner/blob/67f708dad8c5943701d591751a6e7a787e3e65bc/src/warc2text_runner/two/fastertext_lid/patterns.py
+nonword_regex = regex.compile(r"[^\p{Word}\p{Zs}]|\d")
 
 MIN_LENGTH = 200
 MIN_LANG_RATIO = 0.2
@@ -75,14 +80,14 @@ def filter_doc(args, doc):
 
     # LM scores and langid means
     # split lang by underscore to discard possible script suffix
-    if 'langs' in doc and doc['langs']:
-        avg_correct_lang = sum(1 for l in doc['langs'] if l.split('_')[0] == doc['document_lang']) / n_segs
+    if 'seg_langs' in doc and doc['seg_langs']:
+        avg_correct_lang = sum(1 for l in doc['seg_langs'] if l.split('_')[0] == doc['lang'][0]) / n_segs
     else:
         # If there is no langs field and correct lang is requested, please crash
         avg_correct_lang = None
 
     # Filter criteria
-    if args.explicit and is_adult(doc['url'], args.extended_explicit):
+    if args.explicit and is_adult(doc['u'], args.extended_explicit):
         return "adult_ut1"
 
     if args.avg_words:
@@ -94,20 +99,35 @@ def filter_doc(args, doc):
     if args.minimum and len(text) <= MIN_LENGTH:
         return f"length_{MIN_LENGTH}"
 
-    if args.language and avg_correct_lang <= MIN_LANG_RATIO:
-        return f"lang_ratio_{MIN_LANG_RATIO}"
+    #if args.language and avg_correct_lang <= MIN_LANG_RATIO:
+    #    return f"lang_ratio_{MIN_LANG_RATIO}"
 
     return "keep"
 
-for line in sys.stdin:
-    doc = orjson.loads(line)
-    reason = filter_doc(args, doc)
+# perform language identification for wach segment in a document
+def segment_langid(text):
+    lang_segments = []
+    for segment in text.split('\n'):
+        # apply same preprocessing as lid193 + lowercase
+        segment = nonword_regex.sub('', segment.lower())
+        label = langid.predict(segment)
+        pred = label[0][0].replace("__label__","")
+        lang_segments.append(pred)
+    return lang_segments
 
-    # If not discarding documents, just add metadata to the json and print
-    # otherwise just print the document in case "keep" reason
-    # with other filter reasons, just do nothing
-    if not args.filter:
-        doc["filter"] = reason
-        print(orjson.dumps(doc).decode('utf-8'))
-    elif reason == "keep":
-        print(line, end='')
+for line in sys.stdin:
+    #TODO apply monofixer
+    doc = orjson.loads(line)
+    doc["seg_langs"] = segment_langid(doc["text"])
+    #TODO sort out the langcodes matching
+    # docscorer internal langstats need to be adapted to the new codes
+    # some langs may need to be converted to the macro code before scoring
+    doc["filter"] = filter_doc(args, doc)
+    doc["doc_scores"] = scorer.score_text(
+            ref_lang=doc["lang"][0],
+            lang_segments=doc["seg_langs"],
+            scores_lang=[1.0]*len(doc["seg_langs"]), #TODO hack, should remove this
+            document=doc["text"],
+            )
+
+    print(orjson.dumps(doc, option=orjson.OPT_SERIALIZE_NUMPY).decode('utf-8'))
