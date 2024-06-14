@@ -7,6 +7,8 @@ logs/
 blocklists/*
 !blocklists/*.gz
 !blocklists/hplt_adult_domains
+lid*.bin
+*.sif
 
 # Cargo generated files
 utils/target
