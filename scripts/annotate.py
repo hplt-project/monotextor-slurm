@@ -7,14 +7,13 @@ import os
 
 from unicodedata import category as cat
 from docscorer import DocumentScorer
-import fasttext
 import orjson
 import regex
-fasttext.FastText.eprint = lambda x: None
 
 realpath = os.path.dirname(os.path.realpath(__file__))
 
 parser = ArgumentParser()
+parser.add_argument('lang', help='Target language')
 parser.add_argument('-a','--all', action='store_true', help="Use all filters")
 parser.add_argument('-e','--explicit', action='store_true', help="Remove explicit content with UT1 adult list")
 parser.add_argument('-E','--extended_explicit', action='store_true', help="Extended explicit url block looking for banned patterns")
@@ -34,10 +33,7 @@ if args.all:
 
 extract_domain = regex.compile("^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/\n]+)(.*)", regex.I)
 remove_subdomain = re.compile(".*?\.")
-scorer = DocumentScorer()
-langid = fasttext.load_model('lid193_merged_arabics.bin')
-# from https://github.com/hplt-project/warc2text-runner/blob/67f708dad8c5943701d591751a6e7a787e3e65bc/src/warc2text_runner/two/fastertext_lid/patterns.py
-nonword_regex = regex.compile(r"[^\p{Word}\p{Zs}]|\d")
+scorer = DocumentScorer(args.lang)
 
 MIN_LENGTH = 200
 MIN_LANG_RATIO = 0.2
@@ -104,27 +100,14 @@ def filter_doc(args, doc):
 
     return "keep"
 
-# perform language identification for wach segment in a document
-def segment_langid(text):
-    lang_segments = []
-    for segment in text.split('\n'):
-        # apply same preprocessing as lid193 + lowercase
-        segment = nonword_regex.sub('', segment.lower())
-        label = langid.predict(segment)
-        pred = label[0][0].replace("__label__","")
-        lang_segments.append(pred)
-    return lang_segments
-
 for line in sys.stdin:
     #TODO apply monofixer
     doc = orjson.loads(line)
-    doc["seg_langs"] = segment_langid(doc["text"])
     #TODO sort out the langcodes matching
     # docscorer internal langstats need to be adapted to the new codes
     # some langs may need to be converted to the macro code before scoring
     doc["filter"] = filter_doc(args, doc)
     doc["doc_scores"] = scorer.score_text(
-            ref_lang=doc["lang"][0],
             lang_segments=doc["seg_langs"],
             scores_lang=[1.0]*len(doc["seg_langs"]), #TODO hack, should remove this
             document=doc["text"],
