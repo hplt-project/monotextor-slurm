@@ -1,6 +1,5 @@
 use std::sync::mpsc::sync_channel;
 use std::io::BufRead;
-use std::path::Path;
 use std::sync::Arc;
 use std::thread;
 use std::io;
@@ -12,14 +11,14 @@ use env_logger::Env;
 use clap::Parser;
 
 use heli_otr::identifier::Identifier;
-use heli_otr::languagemodel::Model;
+use heli_otr::{load_models, pythonpath};
 
 
 #[derive(Parser)]
 #[clap(version, about="Add segment level language identification to JSONL documents")]
 struct Args {
     #[clap(help="Path to heli-otr model directory")]
-    modelpath: String,
+    modelpath: Option<String>,
 }
 
 // Define a document struct
@@ -41,33 +40,19 @@ struct Document {
     seg_langs: Option<Vec<String>>,
 }
 
-// Load heli-otr models in parallel
-fn load_models(modelpath: &str) -> (Model, Model) {
-    let grampath = format!("{modelpath}/charmodel.bin");
-    let char_handle = thread::spawn(move || {
-        let path = Path::new(&grampath);
-        Model::from_bin(path)
-    });
-
-    let wordpath = format!("{modelpath}/wordmodel.bin");
-    let word_handle = thread::spawn(move || {
-        let path = Path::new(&wordpath);
-        Model::from_bin(path)
-    });
-    let charmodel = char_handle.join().unwrap();
-    let wordmodel = word_handle.join().unwrap();
-
-    (charmodel, wordmodel)
-}
-
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     let args = Args::parse();
+    let modelpath = if let Some(modelpath) = args.modelpath {
+        modelpath
+    } else {
+        pythonpath().expect("Could loading heli_otr path, please install it as python module or provide a modelpath.")
+    };
 
     // Load model and create atomic references
     // so only one model is loaded, then shared with each thread
-    let (charmodel, wordmodel) = load_models(&args.modelpath);
+    let (charmodel, wordmodel) = load_models(&modelpath);
     let charmodelref = Arc::new(charmodel);
     let wordmodelref = Arc::new(wordmodel);
 

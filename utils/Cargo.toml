@@ -20,7 +20,9 @@ log = { version = "0.4.19", features = ["max_level_debug", "release_max_level_in
 env_logger = "0.10.0"
 shingles = "0.1.1"
 seahash = "4.0.0"
-heli_otr = { git = "https://github.com/ZJaume/heli-otr", branch = "openlid193" }
+heli_otr = { git = "https://github.com/ZJaume/heli-otr", rev = "eeb1bff" }
+# Use 0 version of pyo3, let heli choose
+pyo3 = { version = "0", features = ["auto-initialize"] }
 
 [dev-dependencies]
 assert_cmd = "2.0.12"
