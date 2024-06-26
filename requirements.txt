@@ -2,4 +2,4 @@ orjson==3.10.4
 zstandard==0.21.0
 bifixer==0.8.9
 fasttext-wheel==0.9.2
-docscorer @ git+https://github.com/pablop16n/web-docs-scorer@8d82e020defec9e12b2d5e920ae6f30f2fb509f2
+docscorer @ git+https://github.com/pablop16n/web-docs-scorer@3c353f3
