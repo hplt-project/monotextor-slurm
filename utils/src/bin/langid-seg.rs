@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use itertools::Itertools;
 use rayon::prelude::*;
 use env_logger::Env;
+use regex::Regex;
 use clap::Parser;
 
 use heli_otr::identifier::Identifier;
@@ -49,6 +50,8 @@ fn main() {
     } else {
         pythonpath().expect("Could loading heli_otr path, please install it as python module or provide a modelpath.")
     };
+    // compile langcode fix regex
+    let codefix = Regex::new(r"(\w+_)(\w)(\w+)").unwrap();
 
     // Load model and create atomic references
     // so only one model is loaded, then shared with each thread
@@ -90,7 +93,16 @@ fn main() {
                 // add the predictions to seg_langs array in the json
                 let _ = doc.seg_langs.insert(Vec::new());
                 for line in doc.text.lines() {
-                    doc.seg_langs.as_mut().unwrap().push(detector.identify(&line).0.to_string());
+                    let mut pred = detector.identify(&line).0.to_string();
+                    // Uppercase the first letter of the script suffix in the langcode
+                    pred = codefix.replace(&pred, |captures: &regex::Captures| {
+                        let mut ser = String::new();
+                        ser.push_str(&captures[1]);
+                        ser.push_str(&captures[2].to_uppercase());
+                        ser.push_str(&captures[3]);
+                        ser
+                    }).to_string();
+                    doc.seg_langs.as_mut().unwrap().push(pred);
                 }
                 doc
             }).collect();
