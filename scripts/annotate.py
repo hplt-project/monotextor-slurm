@@ -5,8 +5,12 @@ import sys
 import re
 import os
 
+from pii_manager import PiiEnum
+from pii_manager.api import PiiManager
+from pii_manager.lang import COUNTRY_ANY
 from unicodedata import category as cat
 from docscorer import DocumentScorer
+from iso639 import Lang
 import orjson
 import regex
 
@@ -29,11 +33,25 @@ if args.all:
     args.minimum = True
     args.language = True
 
+isolang = Lang(args.lang)
+print(isolang, file=sys.stderr)
+
 #print(sys.argv, file=sys.stderr)
 
 extract_domain = regex.compile("^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/\n]+)(.*)", regex.I)
 remove_subdomain = re.compile(".*?\.")
 scorer = DocumentScorer(args.lang)
+
+#PII regex
+if isolang.pt3 == 'hbs':
+    piilang = 'hbs'
+elif not isolang.pt1:
+    piilang = 'any'
+else:
+    piilang = isolang.pt1
+country = COUNTRY_ANY
+tasklist = (PiiEnum.IP_ADDRESS, PiiEnum.EMAIL_ADDRESS, PiiEnum.PHONE_NUMBER)
+proc = PiiManager(piilang, country, tasks=tasklist, mode="extract")
 
 MIN_LENGTH = 200
 MIN_LANG_RATIO = 0.2
@@ -100,6 +118,10 @@ def filter_doc(args, doc):
 
     return "keep"
 
+def pii_multi(text):
+    matches = proc(text)
+    return list(sorted((i.pos, i.pos + len(i.value)) for i in matches))
+
 for line in sys.stdin:
     #TODO apply monofixer
     doc = orjson.loads(line)
@@ -107,6 +129,7 @@ for line in sys.stdin:
     # docscorer internal langstats need to be adapted to the new codes
     # some langs may need to be converted to the macro code before scoring
     doc["filter"] = filter_doc(args, doc)
+    doc["pii"] = pii_multi(doc["text"])
     doc["doc_scores"] = scorer.score_text(
             lang_segments=doc["seg_langs"],
             scores_lang=[1.0]*len(doc["seg_langs"]), #TODO hack, should remove this
