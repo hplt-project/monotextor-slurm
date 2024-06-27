@@ -1,9 +1,11 @@
 from argparse import ArgumentParser
 from collections import Counter
+import contextlib
 import random
 import sys
 import re
 import os
+import io
 
 from bifixer import restorative_cleaning
 from pii_manager import PiiEnum
@@ -48,6 +50,13 @@ scorer = DocumentScorer(args.lang)
 monofixer_lang = isolang.pt1 if isolang.pt1 else 'any'
 chars_lang, charsRe_lang = restorative_cleaning.getCharsReplacements(monofixer_lang)
 
+@contextlib.contextmanager
+def stdout_to_err():
+    save_stdout = sys.stdout
+    sys.stdout = sys.stderr
+    yield
+    sys.stdout = save_stdout
+
 #PII regex
 if isolang.pt3 == 'hbs':
     piilang = 'hbs'
@@ -57,7 +66,8 @@ else:
     piilang = isolang.pt1
 country = COUNTRY_ANY
 tasklist = (PiiEnum.IP_ADDRESS, PiiEnum.EMAIL_ADDRESS, PiiEnum.PHONE_NUMBER)
-proc = PiiManager(piilang, country, tasks=tasklist, mode="extract")
+with stdout_to_err():
+    proc = PiiManager(piilang, country, tasks=tasklist, mode="extract")
 
 MIN_LENGTH = 200
 MIN_LANG_RATIO = 0.2
