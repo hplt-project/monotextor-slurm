@@ -5,6 +5,7 @@ import sys
 import re
 import os
 
+from bifixer import restorative_cleaning
 from pii_manager import PiiEnum
 from pii_manager.api import PiiManager
 from pii_manager.lang import COUNTRY_ANY
@@ -41,6 +42,11 @@ print(isolang, file=sys.stderr)
 extract_domain = regex.compile("^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/\n]+)(.*)", regex.I)
 remove_subdomain = re.compile(".*?\.")
 scorer = DocumentScorer(args.lang)
+
+# Load monofixer replacements
+# if no pt1 it doesn't matter, monofixer does not support languages without pt1
+monofixer_lang = isolang.pt1 if isolang.pt1 else 'any'
+chars_lang, charsRe_lang = restorative_cleaning.getCharsReplacements(monofixer_lang)
 
 #PII regex
 if isolang.pt3 == 'hbs':
@@ -118,16 +124,25 @@ def filter_doc(args, doc):
 
     return "keep"
 
+# Look for PII, return matched ranges
 def pii_multi(text):
     matches = proc(text)
     return list(sorted((i.pos, i.pos + len(i.value)) for i in matches))
 
+# Apply character fixing and remove html tax by monofixer
+# do it for each segment separatedly because monofixer removes endlines
+# it is also the wey we've been applying monofixer until now
+def monofixer(text):
+    fixed_text = []
+    for segment in text.split('\n'):
+        fixed_seg = restorative_cleaning.fix(segment, monofixer_lang, chars_lang, charsRe_lang)
+        fixed_seg = restorative_cleaning.remove_html_tags(fixed_seg)
+        fixed_text.append(fixed_seg)
+    return '\n'.join(fixed_text)
+
 for line in sys.stdin:
-    #TODO apply monofixer
     doc = orjson.loads(line)
-    #TODO sort out the langcodes matching
-    # docscorer internal langstats need to be adapted to the new codes
-    # some langs may need to be converted to the macro code before scoring
+    doc['text'] = monofixer(doc['text'])
     doc["filter"] = filter_doc(args, doc)
     doc["pii"] = pii_multi(doc["text"])
     doc["doc_scores"] = scorer.score_text(
