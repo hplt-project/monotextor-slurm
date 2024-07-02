@@ -6,33 +6,44 @@ source .env
 source .checks
 set -euo pipefail
 
+WORKERS=20
+idle_timeout=2m
+
 # Create an allocation queue that will allocate a full node for each worker
 # each worker will process one task
-hq alloc add slurm --name $COLL --time-limit 5m \
-    --workers-per-alloc 1 --max-worker-count 2 --cpus 128 \
-    -- -p debug -A $SBATCH_ACCOUNT \
+hq alloc add slurm --name processing \
+    --workers-per-alloc 1 --max-worker-count $WORKERS --backlog $WORKERS \
+    --idle-timeout $idle_timeout --time-limit 30m \
+    -- -p small -A $SBATCH_ACCOUNT \
     --cpus-per-task 128 --ntasks 1 --mem-per-cpu 1750 \
-    -o "$SLURM_LOGS_DIR/hq-processing-%x.out" -e "$SLURM_LOGS_DIR/hq-worker-processing-%x.err"
+    -o "$SLURM_LOGS_DIR/hq-worker-%x.out" -e "$SLURM_LOGS_DIR/hq-worker-%x.err"
 # obtain the allocation queue id
-qid=$(hq alloc list --output-mode json | jq -cr ".[] | select(.name == \"$COLL\") | .id" | head -1)
+qid=$(hq alloc list --output-mode json | jq -cr ".[] | select(.name == \"processing\") | .id" | head -1)
+
+trap "hq alloc remove --force $qid" INT
 
 # Create the task list
 entries=$(mktemp); trap "rm $entries" EXIT
 #for coll in `echo ${!COLLECTIONS[@]} | tr ' ' '\n' | sort`
-for coll in cc13
+for coll in cc13 cc16
 do
-    for lang in cat_Latn mlt_Latn eng_Latn
+    for lang in `cat ../langs-two`
     do
-        echo "$lang $COLL 1"
+        echo "$lang $coll 1"
     done
 done | tee >(cat) >$entries
 
 set +e # remove strict mode, so if job fails, script does not finish and the queue can be closed afterwards
 hq submit --each-line $entries \
-    --cpus 128 \
-    --progress --log=$SLURM_LOGS_DIR/hq-processing.log \
-    --max-fails=0 --crash-limit=1 \
-    bash 10.processing-hq
+    --cpus 128 --progress \
+    --log=$SLURM_LOGS_DIR/hq-processing.log \
+    --max-fails=10 --crash-limit=5 \
+    bash 10.processing
+
+# Wait until the queue workers are shut down
+# sleep a bit more than timeout to avoid running the remove command while workers are still shutting down
+sleep $idle_timeout
+sleep 15s
 
 # finish que allocation queue
-hq alloc remove --force $qid
+hq alloc remove $qid
