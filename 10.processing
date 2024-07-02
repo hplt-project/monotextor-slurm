@@ -16,11 +16,12 @@ echo running $L $COLL $batchid
 # singularity container will run gnu parallel to avoid many containers being launched
 # container needs the current dir to be mounted
 zstdcat $INPUT \
-| $PROFILER \
-singularity exec --bind $(pwd -P) --pwd $(pwd -P) monotextor.sif \
+| singularity exec monotextor.sif \
+    langid-seg /usr/local/lib/python3.10/dist-packages/heli_otr \
+| singularity exec --bind $(pwd -P) --pwd $(pwd -P) monotextor.sif \
 parallel --pipe -k \
     --halt now,fail=1 \
-    -j64 --block 10M python scripts/annotate.py \
+    -j160 --block 10M python scripts/annotate.py -a $L \
 | zstdmt -T64 -10 \
 > $OUTPUT.tmp \
 || {
