@@ -16,7 +16,7 @@ IFS=" " read -ra args <<< $HQ_ENTRY
 L=${args[0]}
 COLL=${args[1]}
 TMPSFX=tmp_$$
-INPUT_DIR=$WORKSPACE/$COLL/$L
+INPUT_DIR=$WORKSPACE/batches/$COLL/$L
 JSON_FILES=`ls -1 $INPUT_DIR/batch_*.jsonl.zst`
 echo $JSON_FILES >&2
 

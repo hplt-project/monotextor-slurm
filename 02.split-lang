@@ -17,7 +17,7 @@ if [[ ! -n ${COLLECTIONS[$COLL]} ]]; then
     exit 1
 fi
 export INPUT_DIR=$WORKSPACE/merged/$COLL
-export OUTPUT_DIR=$WORKSPACE/$COLL
+export OUTPUT_DIR=$WORKSPACE/batches/$COLL
 mkdir -p $OUTPUT_DIR
 
 # split documents in lang folders
