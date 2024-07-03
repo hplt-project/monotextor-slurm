@@ -2,7 +2,7 @@ FROM ubuntu:22.04
 
 RUN apt-get update && apt-get upgrade -y
 RUN apt-get install -y curl parallel git python3 python-is-python3 python3-dev python3-pip python3-venv
-RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
+RUN curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain=1.77.2
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 COPY requirements.txt /opt/reqs.txt
