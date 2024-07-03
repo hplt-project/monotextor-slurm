@@ -53,4 +53,4 @@ singularity exec --bind $(pwd -P) --bind $INPUT_DIR --pwd $(pwd -P) monotextor.s
 | split - \
     --numeric-suffixes=1 -a 8 -C 120G \
     --filter='compress-batch $FILE' \
-    $OUTPUT_DIR
+    $OUTPUT_DIR/batch_
