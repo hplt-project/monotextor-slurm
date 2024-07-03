@@ -9,6 +9,7 @@ blocklists/*
 !blocklists/hplt_adult_domains
 lid*.bin
 *.sif
+.env.python
 
 # Cargo generated files
 utils/target
