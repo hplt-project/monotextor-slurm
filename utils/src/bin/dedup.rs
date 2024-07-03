@@ -13,6 +13,9 @@ struct Args{
     #[clap(short, long, required=false, takes_value=false,
            help="Print discarded duplicates, instead of non-discarded.")]
     print_duplicates: bool,
+    #[clap(short, long, required=false, takes_value=false,
+           help="Re-assign document id's based on the deduplicated document amount")]
+    assign_ids: bool,
 
     #[clap(help="File containg the clusters array/s of duplicates.")]
     clusterfile: String,
@@ -33,7 +36,7 @@ fn main(){
 
     info!("Reading documents and discarding duplicates");
     for f in &args.files {
-        deduper.filter_dups(f);
+        deduper.filter_dups(f, args.assign_ids);
     }
     let pct = (deduper.num_unique as f32 / deduper.num_docs as f32) * 100.0;
     info!("Duplicates discarded, {} documents kept ({:.2} %)", deduper.num_unique, pct);

@@ -78,7 +78,7 @@ impl DedupFilter {
     // Read compressed JSONL and discard duplicates according to a UF parents array
     // Re-assign doc id with a unique num reference given
     // If duplicates is true, print only duplicates
-    pub fn filter_dups(&mut self, filename: &String){
+    pub fn filter_dups(&mut self, filename: &String, assign_id: bool){
         let file = File::open(filename)
             .expect(format!("Error opening file '{filename}'").as_str());
         let decoder = Decoder::new(file)
@@ -107,7 +107,9 @@ impl DedupFilter {
 
             // Re-assign new document id with regex, id always at the beggining, no need to parse the
             // whole json
-            line = self.regex_id.replace(&line, format!("{{\"id\":{},", self.num_unique)).to_string();
+            if assign_id {
+                line = self.regex_id.replace(&line, format!("{{\"id\":{},", self.num_unique)).to_string();
+            }
             println!("{}", line);
 
             self.num_read_docs += 1;
