@@ -16,11 +16,11 @@ zstd = "0.12.3"
 rayon = "1.5.3"
 itertools = "0.11.0"
 fnv = "1.0.7"
-log = { version = "0.4.19", features = ["max_level_debug", "release_max_level_info"]}
+log = { version = "0.4", features = ["max_level_debug", "release_max_level_info"]}
 env_logger = "0.10.0"
 shingles = "0.1.1"
 seahash = "4.0.0"
-heli_otr = { git = "https://github.com/ZJaume/heli-otr", rev = "eeb1bff" }
+heli_otr = { git = "https://github.com/ZJaume/heli-otr", rev = "b861c10", default_features = false }
 # Use 0 version of pyo3, let heli choose
 pyo3 = { version = "0", features = ["auto-initialize"] }
 
