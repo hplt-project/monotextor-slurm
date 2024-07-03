@@ -8,6 +8,7 @@ import os
 import io
 
 from bifixer import restorative_cleaning
+from xxhash import xxh128_hexdigest
 from pii_manager import PiiEnum
 from pii_manager.api import PiiManager
 from pii_manager.lang import COUNTRY_ANY
@@ -152,6 +153,7 @@ def monofixer(text):
 
 for line in sys.stdin:
     doc = orjson.loads(line)
+    doc["id"] = xxh128_hexdigest(doc["f"] + doc["u"] + doc["ts"])
     doc['text'] = monofixer(doc['text'])
     doc["filter"] = filter_doc(args, doc)
     doc["pii"] = pii_multi(doc["text"])
