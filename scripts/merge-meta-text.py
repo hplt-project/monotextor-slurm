@@ -1,6 +1,7 @@
 import zstandard
 import orjson
 import sys
+import io
 
 collection = sys.argv[1]
 input_dir = sys.argv[2]
@@ -11,9 +12,16 @@ compressor = zstandard.ZstdCompressor(level=level, threads=4)
 
 with zstandard.open(f'{input_dir}/text.zst', 'rt', errors='strict') as text_file, \
         zstandard.open(f'{output_file}.docs.zst', 'wb', cctx=compressor) as out_file, \
-        zstandard.open(f'{input_dir}/metadata.zst', 'rt', errors='strict') as meta_file, \
+        zstandard.open(f'{input_dir}/metadata.zst', 'rb', errors='strict') as meta_file, \
         zstandard.open(f'{input_dir}/lang.zst', 'rt', errors='strict') as lang_file:
-    for line in meta_file:
+
+    for i, line_bytes in enumerate(io.BufferedReader(meta_file)):
+        try:
+            line = line_bytes.decode('utf-8')
+        except UnicodeDecodeError:
+            print(f"WARNING: discarded document with encoding error in metadata. Line {i+1} in file {input_dir}",
+                  file=sys.stderr)
+            continue
         doc = orjson.loads(line)
         text = orjson.loads(text_file.readline())
         lang = orjson.loads(lang_file.readline())
