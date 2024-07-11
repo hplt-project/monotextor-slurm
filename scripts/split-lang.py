@@ -64,7 +64,7 @@ for lang in langs:
 
 for infile in input_files:
     with zstandard.open(infile, 'rb') as docs_file:
-        for line in io.BufferedReader(docs_file):
+        for i, line in enumerate(io.BufferedReader(docs_file)):
             # obtain lang without decoding string nor parsing json
             match = lang_re.search(line)
             if match is None:
@@ -81,7 +81,7 @@ for infile in input_files:
 
             # confidence threshold
             if prob < 0.5:
-                lang = 'unk'
+                continue
 
             # move document to its lang dir
             lang_files[lang].write(line)
