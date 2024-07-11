@@ -7,8 +7,10 @@ IFS=" " read -ra args <<< $HQ_ENTRY
 L=${args[0]}
 COLL=${args[1]}
 batchid=${args[2]}
-INPUT=$WORKSPACE/$COLL/$L/batch_$batchid.jsonl.zst
-OUTPUT=$WORKSPACE/$COLL/$L/scored_$batchid.jsonl.zst
+INPUT=$WORKSPACE/dedup/$COLL/$L/batch_$batchid.jsonl.zst
+out_dir=$WORKSPACE/annotated/$COLL/$L
+OUTPUT=$out_dir/batch_$batchid.jsonl.zst
+mkdir -p $out_dir
 
 echo running $L $COLL $batchid
 
@@ -21,7 +23,7 @@ zstdcat $INPUT \
 | singularity exec --bind $(pwd -P) --pwd $(pwd -P) monotextor.sif \
 parallel --pipe -k \
     --halt now,fail=1 \
-    -j160 --block 10M python scripts/annotate.py -a $L \
+    -j200 --block 20M python scripts/annotate.py -a $L \
 | zstdmt -T64 -10 \
 > $OUTPUT.tmp \
 || {

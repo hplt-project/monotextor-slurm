@@ -12,11 +12,9 @@ shopt -s failglob
 source .env
 
 IFS=" " read -ra args <<< $HQ_ENTRY
-L=${args[0]}
-COLL=${args[1]}
 TMPSFX=tmp_$$
-INPUT_DIR=$WORKSPACE/batches/$COLL/$L
-OUTPUT_DIR=$WORKSPACE/dedup/$COLL/$L
+INPUT_DIR=${args[0]}
+OUTPUT_DIR=`echo $INPUT_DIR | sed 's/batches/dedup/'`
 JSON_FILES=`ls -1 $INPUT_DIR/batch_*.jsonl.zst`
 mkdir -p $OUTPUT_DIR
 echo $JSON_FILES >&2
@@ -35,6 +33,8 @@ compress-batch(){
 }
 export -f compress-batch
 
+
+#TODO check if the task has already done
 
 #CLUSTER_FILES=""
 #if [ -f $DIR/clusters.zst ]; then

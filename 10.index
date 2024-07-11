@@ -13,10 +13,10 @@ shopt -s failglob
 source .env
 
 IFS=" " read -ra args <<< $HQ_ENTRY
-L=${args[0]}
-COLL=${args[1]}
+#L=${args[0]}
+#COLL=${args[1]}
 TMPSFX=tmp_$$
-INPUT_DIR=$WORKSPACE/batches/$COLL/$L
+INPUT_DIR=${args[0]}
 JSON_FILES=`ls -1 $INPUT_DIR/batch_*.jsonl.zst`
 echo $JSON_FILES >&2
 
@@ -26,13 +26,17 @@ echo $JSON_FILES >&2
 #    OUTPUT_FILE=$DIR/clusters.$SLURM_ARRAY_TASK_ID.zst
 PARAMS=""
 OUTPUT_FILE=$INPUT_DIR/clusters.zst
+if test -s $OUTPUT_FILE; then
+    echo Clusters file already exists, exiting... $OUTPUT_FILE
+    exit 0
+fi
 
-case "$L" in
-#    zh | ja | th)
-#        PARAMS="$PARAMS --tokenizer char";;
-    *)
-        PARAMS="$PARAMS --tokenizer whitespace";;
-esac
+#case "$L" in
+##    zh | ja | th)
+##        PARAMS="$PARAMS --tokenizer char";;
+#    *)
+#        PARAMS="$PARAMS --tokenizer whitespace";;
+#esac
 
 # Build the index and save clusters array
 singularity exec --bind $(pwd -P) --bind $INPUT_DIR --pwd $(pwd -P) monotextor.sif \
