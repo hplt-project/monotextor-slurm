@@ -70,7 +70,7 @@ tasklist = (PiiEnum.IP_ADDRESS, PiiEnum.EMAIL_ADDRESS, PiiEnum.PHONE_NUMBER)
 with stdout_to_err():
     proc = PiiManager(piilang, country, tasks=tasklist, mode="extract")
 
-MIN_LENGTH = 200
+MIN_LENGTH = 500
 MIN_LANG_RATIO = 0.2
 MIN_AVG_WORDS = 5
 MIN_AVG_CHARS = 10
