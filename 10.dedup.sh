@@ -23,8 +23,7 @@ trap "hq alloc remove --force $qid" INT
 # sort them by size to start with the biggest
 entries=$(mktemp); trap "rm $entries" EXIT
 temp=$(mktemp); trap "rm $temp" EXIT
-#for coll in `echo ${!COLLECTIONS[@]} | tr ' ' '\n' | sort`
-for coll in wide5 wide10 wide17 cc16 cc21
+for coll in `echo ${!COLLECTIONS[@]} | tr ' ' '\n' | sort`
 do
     echo $WORKSPACE/batches/$coll/* | tr ' ' '\n'
 done >$temp

@@ -24,14 +24,18 @@ trap "hq alloc remove --force $qid" INT
 
 # Create the task list
 entries=$(mktemp); trap "rm $entries" EXIT
-#for coll in `echo ${!COLLECTIONS[@]} | tr ' ' '\n' | sort`
-for coll in cc16 wide5 wide10 wide17
+for coll in `echo ${!COLLECTIONS[@]} | tr ' ' '\n' | sort`
 do
     for lang in `cat ../langs-two`
     do
-        echo "$lang $coll 1"
+        # only create tasks for existing completed dedup files
+        num=`find $WORKSPACE/dedup/$lang -type f -name "*batch_*.jsonl.zst"`
+        echo "$lang $coll $num"
     done
-done | tee >(cat) >$entries
+done >$entries
+
+echo $(wc -l $entries) tasks
+confirm
 
 set +e # remove strict mode, so if job fails, script does not finish and the queue can be closed afterwards
 hq submit --each-line $entries \
