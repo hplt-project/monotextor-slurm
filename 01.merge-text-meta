@@ -6,10 +6,7 @@
 #SBATCH --cpus-per-task=128
 #SBATCH --mem-per-cpu=1750
 #SBATCH --output=logs/%x.out
-module load cray-python/3.9.12.1
-module load parallel
 source .env
-source .env.python
 set -euo pipefail
 
 COLL=$1
@@ -26,8 +23,10 @@ run-merge (){
 }
 export -f run-merge
 
+binddirs=`echo $INPUT_DIR* | tr ' ' ','`,$OUTPUT_DIR,$(pwd -P)
 # Run every batch in parallel
 # each batch in the output will be renamed to the job number
 $PROFILER \
+singularity exec --bind $binddirs --pwd $(pwd -P) monotextor.sif \
 parallel -j$SLURM_CPUS_ON_NODE --will-cite --halt now,fail=1 \
     run-merge $COLL {} {\#} ::: `find $INPUT_DIR* -maxdepth 1 -mindepth 1 -type d`

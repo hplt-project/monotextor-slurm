@@ -6,9 +6,7 @@
 #SBATCH --cpus-per-task=48
 #SBATCH --mem-per-cpu=1750
 #SBATCH --output=logs/%x.out
-module load cray-python/3.9.12.1
 source .env
-source .env.python
 set -euo pipefail
 
 COLL=$1
@@ -20,8 +18,10 @@ export INPUT_DIR=$WORKSPACE/merged/$COLL
 export OUTPUT_DIR=$WORKSPACE/batches/$COLL
 mkdir -p $OUTPUT_DIR
 
+binddirs=$INPUT_DIR,$OUTPUT_DIR,$(pwd -P)
 # split documents in lang folders
 $PROFILER \
+singularity exec --bind $binddirs --pwd $(pwd -P) monotextor.sif \
 python scripts/split-lang.py $OUTPUT_DIR $INPUT_DIR/*.docs.zst
 
 # clean the merged directory, it is just intermediate
