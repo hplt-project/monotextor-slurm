@@ -35,7 +35,7 @@ done | tee >(cat) >$entries
 
 set +e # remove strict mode, so if job fails, script does not finish and the queue can be closed afterwards
 hq submit --each-line $entries \
-    --cpus 128 --progress \
+    --nodes 1 --progress \
     --log=$SLURM_LOGS_DIR/hq-processing.log \
     --max-fails=10 --crash-limit=5 \
     bash 20.processing

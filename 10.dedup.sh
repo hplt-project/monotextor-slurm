@@ -35,14 +35,14 @@ confirm
 
 set +e # remove strict mode, so if job fails, script does not finish and the queue can be closed afterwards
 hq submit --each-line $entries \
-    --cpus 128 --progress \
+    --nodes 1 --progress \
     --log=$SLURM_LOGS_DIR/hq-index.log \
     --max-fails=10 --crash-limit=5 \
     bash 10.index
 
 #TODO what should we do with taskst that failed in index?
 hq submit --each-line $entries \
-    --cpus 128 --progress \
+    --nodes 1 --progress \
     --log=$SLURM_LOGS_DIR/hq-dedup.log \
     --max-fails=10 --crash-limit=5 \
     bash 10.dedup
