@@ -14,6 +14,7 @@ from pii_manager.api import PiiManager
 from pii_manager.lang import COUNTRY_ANY
 from unicodedata import category as cat
 from docscorer import DocumentScorer
+from marisa_trie import Trie
 from iso639 import Lang
 import orjson
 import regex
@@ -28,6 +29,7 @@ parser.add_argument('-E','--extended_explicit', action='store_true', help="Exten
 parser.add_argument('-w','--avg_words', action='store_true', help="Remove docs that do not meet the minimum word average per segment")
 parser.add_argument('-m','--minimum', action='store_true', help="Remove docs that do not meet the minimum size")
 parser.add_argument('-l','--language', action='store_true', help="Remove docs that do not meet the minimum correct language pct")
+parser.add_argument('-r','--robots', type=str, required=False, help="List of robots.txt disallowed urls")
 parser.add_argument('-z','--cjk', action='store_true', help="Process CJK language")
 
 args = parser.parse_args()
@@ -42,6 +44,7 @@ print(isolang, file=sys.stderr)
 
 #print(sys.argv, file=sys.stderr)
 
+url_prefix_re = regex.compile("^(https?:\/\/)?(www\.)?(.+)", regex.I)
 extract_domain = regex.compile("^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/\n]+)(.*)", regex.I)
 remove_subdomain = re.compile(".*?\.")
 scorer = DocumentScorer(args.lang)
@@ -77,8 +80,16 @@ MIN_AVG_CHARS = 10
 BLOCKED_PATTERNS = ('porn', 'sex', 'tube', 'cams', 'camgirls', 'mature')
 
 # Load adult domains
-with open(f'./blocklists/adult_domains') as f:
-    adult_doms = set(i.strip() for i in f)
+# create the trie with an iterator over the file to avoid loading all the file into memory
+def file_iterator(filename):
+    with open(filename, 'rt') as f:
+        for line in f:
+            yield line.strip()
+adult_doms = Trie(file_iterator('./blocklists/adult_domains'))
+
+# Load robotstxt disallowed
+if args.robots:
+    robots_urls = Trie(file_iterator(args.robots))
 
 def is_adult(url, extended=False):
     domain = extract_domain.sub(r"\1", url)
@@ -151,12 +162,23 @@ def monofixer(text):
         fixed_text.append(fixed_seg)
     return '\n'.join(fixed_text)
 
+# Check if the url is in the robots.txt disallowed list
+def robots_filter(url):
+    # remove the prefix of the url, same preprocessing as in robotstxt extraction
+    url_noprefix = url_prefix_re.sub(r'\3', url)
+    if url_noprefix in robots_urls:
+        return "disallow"
+    else:
+        return "allow"
+
 for line in sys.stdin:
     doc = orjson.loads(line)
     doc["id"] = xxh128_hexdigest(doc["f"] + doc["u"] + doc["ts"])
     doc['text'] = monofixer(doc['text'])
     doc["filter"] = filter_doc(args, doc)
     doc["pii"] = pii_multi(doc["text"])
+    if args.robots:
+        doc["robots"] = robots_filter(doc["u"])
     doc["doc_scores"] = scorer.score_text(
             lang_segments=doc["seg_langs"],
             scores_lang=[1.0]*len(doc["seg_langs"]), #TODO hack, should remove this

@@ -23,6 +23,9 @@ seahash = "4.0.0"
 heli_otr = { git = "https://github.com/ZJaume/heli-otr", rev = "b861c10", default_features = false }
 # Use 0 version of pyo3, let heli choose
 pyo3 = { version = "0", features = ["auto-initialize"] }
+fst = "0.4.7"
+regex-automata = { version = "0.1.9", features = ["transducer"] }
+memmap2 = "0.9.4"
 
 [dev-dependencies]
 assert_cmd = "2.0.12"
