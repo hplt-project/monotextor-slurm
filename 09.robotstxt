@@ -1,0 +1,90 @@
+#!/bin/bash
+#SBATCH -A project_465000498
+#SBATCH -p small
+#SBATCH --ntasks 1
+#SBATCH --cpus-per-task 128
+#SBATCH --mem-per-cpu 3500
+#SBATCH --time=72:00:00
+#SBATCH --output=logs/%x.out
+set -euo pipefail
+source .env
+module load parallel
+
+export COLL=$1
+export INPUT_DIR=${COLLECTIONS[$COLL]}
+export OUTPUT_DIR=$WORKSPACE/robotstxt/$COLL
+mkdir -p $OUTPUT_DIR
+echo $INPUT_DIR*
+echo $OUTPUT_DIR
+
+extracturls() {
+    local input=$1/metadata.zst
+    local output=$2
+
+    # Parse jsonl to extract urls and remove http www. prefixes
+    zstdcat $input | jq -r .u \
+    | perl -pe 's#^(https?://)?(www\.)?##' \
+    | LC_ALL=C sort --compress-program=zstd \
+    >$output/urls.txt
+}
+extractrobots() {
+    local input=$1/robotstxt.warc.gz
+    local output=$2/robotstxt.tsv
+    mkdir -p $2
+
+    warc2text -s --stdout --jsonl --classifier skip --robots-process $input \
+    | python scripts/robots2tsv.py \
+    > $output.tmp
+    mv $output.tmp $output
+}
+robotsfilterbatch() {
+    local input=$1
+    local output=$input/disallowed-urls.zst
+
+    robots-filter $OUTPUT_DIR/urls.fst $input/robotstxt.tsv \
+    | zstd >$output.tmp
+
+    mv $output.tmp $output
+}
+export -f extracturls
+export -f extractrobots
+export -f robotsfilterbatch
+
+batches=`find $INPUT_DIR* -maxdepth 1 -mindepth 1 -type d`
+
+# Extract robots.txt from WARCs
+binddirs=`echo $INPUT_DIR* | tr ' ' ','`,$OUTPUT_DIR,$(pwd -P)
+singularity exec --bind $binddirs --pwd $(pwd -P) monotextor.sif \
+parallel -j$SLURM_CPUS_ON_NODE --halt now,fail=1 \
+    extractrobots {} $OUTPUT_DIR/{\#} ::: $batches
+
+# Extract urls from metadata
+parallel -j$SLURM_CPUS_ON_NODE --halt now,fail=1 \
+    extracturls {} $OUTPUT_DIR/{\#} ::: $batches
+
+# Concat all urls and sort them
+LC_ALL=C sort -m -u \
+    -T $WORKSPACE/tmp \
+    -S 80% --parallel=$SLURM_CPUS_ON_NODE \
+    --compress-program=zstdmt \
+    $OUTPUT_DIR/*/urls.txt \
+    >$OUTPUT_DIR/urls.sorted.txt
+
+# Create the FST index of urls
+singularity exec --bind $OUTPUT_DIR monotextor.sif \
+    fst set --force --sorted $OUTPUT_DIR/urls.sorted.txt $OUTPUT_DIR/urls.fst
+
+# Query with robotstxt extracted patterns the urls index and extract disallowed urls
+binddirs=$OUTPUT_DIR,$(pwd -P)
+singularity exec --bind $binddirs --pwd $(pwd -P) monotextor.sif \
+parallel -j$SLURM_CPUS_ON_NODE --halt now,fail=1 \
+    robotsfilterbatch {} ::: `find $OUTPUT_DIR -mindepth 1 -maxdepth 1 -type d`
+
+zstdcat $OUTPUT_DIR/*/disallowed-urls.zst \
+| LC_ALL=C sort -S 80% -u \
+    -T $WORKSPACE/tmp \
+    --parallel=$SLURM_CPUS_ON_NODE --compress-program=zstdmt \
+| zstdmt >$OUTPUT_DIR/disallowed-urls.zst.tmp
+
+mv $OUTPUT_DIR/disallowed-urls.zst.tmp $OUTPUT_DIR/disallowed-urls.zst
+#TODO cleanup
