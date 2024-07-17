@@ -2,5 +2,6 @@ orjson==3.10.4
 zstandard==0.21.0
 bifixer==0.8.9
 iso639-lang==2.2.3
+marisa-trie==1.2.0
 docscorer @ git+https://github.com/pablop16n/web-docs-scorer@3c353f3
 pii-manager @ git+https://github.com/mmanteli/multilingual-PII-tool@db59603
