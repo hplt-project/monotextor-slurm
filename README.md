@@ -5,9 +5,10 @@ Originally started as a [monotextor](https://github.com/bitextor/monotextor)-lik
 
 ## Pipeline description
 ### Merge-batching
-This pipeline needs as input directories structured as `$COLLECTION_NAME/$BATCH/{metadata,text,lang}.zst` from [warc2text-runner](https://github.com/hplt-project/warc2text-runner).
-The first step will merge for each batch, the three JSONL line-aligned files into a single JSONL, where each document is a JSON object containing the text and all the metadata and language fields.
-Then, for each collection, all the batches will be read sequentially and all the documents will be placed into separated folders for each language detected and, for each language folder, divide into batches if needed.
+This pipeline needs as input, directories structured as `$COLLECTION_NAME/$BATCH/{metadata,text,lang}.zst` from [warc2text-runner](https://github.com/hplt-project/warc2text-runner).
+The first step will merge for each batch, the three JSONL line-aligned files into a single JSONL, where each document is a JSON object containing the text and all the metadata (`metadata.zst` and `lang.zst`).
+Then, for each collection, all the batches will be read sequentially and documents will be placed into separated folders for each language detected and, for each language folder, divide into batches if needed.
+On this step, documents with that have prediction probability (`prob`) for the first `lang` field less than 0.5 are discarded.
 
 After the data has been prepared, the actual processing takes place, with near-deduplication and annotation.
 
