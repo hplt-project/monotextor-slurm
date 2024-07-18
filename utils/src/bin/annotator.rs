@@ -3,11 +3,14 @@ use std::io::BufRead;
 use std::sync::Arc;
 use std::thread;
 use std::io;
+use std::fs;
 
+use fst::Set;
 use serde::{Deserialize, Serialize};
 use itertools::Itertools;
 use rayon::prelude::*;
 use env_logger::Env;
+use memmap2::Mmap;
 use regex::Regex;
 use clap::Parser;
 
@@ -16,10 +19,12 @@ use heli_otr::{load_models, pythonpath};
 
 
 #[derive(Parser)]
-#[clap(version, about="Add segment level language identification to JSONL documents")]
+#[clap(version, about="Annotate JSONL documents with langid and/or robotstxt allowance")]
 struct Args {
-    #[clap(help="Path to heli-otr model directory")]
+    #[clap(short, help="Path to heli-otr model directory")]
     modelpath: Option<String>,
+    #[clap(short, help="Add robotstxt disallowed info with an FST index")]
+    disallowed_index: Option<String>,
 }
 
 // Define a document struct
@@ -39,10 +44,12 @@ struct Document {
     prob: Vec<f32>,
     text: String,
     seg_langs: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    robotstxt: Option<String>,
 }
 
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     let args = Args::parse();
     let modelpath = if let Some(modelpath) = args.modelpath {
@@ -52,6 +59,16 @@ fn main() {
     };
     // compile langcode fix regex
     let codefix = Regex::new(r"(\w+_)(\w)(\w+)").unwrap();
+
+    let index_main: Option<_>;
+    if let Some(filename) = args.disallowed_index {
+        let mmap = unsafe { Mmap::map(&fs::File::open(filename)?)? };
+        index_main = Some(Set::new(mmap)?);
+    } else {
+        index_main = None;
+    }
+    // remove url http and ww prefix
+    let url_prefix_re = Arc::new(Regex::new(r"^(https?://)?(www\.)?(.*)$")?);
 
     // Load model and create atomic references
     // so only one model is loaded, then shared with each thread
@@ -104,6 +121,23 @@ fn main() {
                     }).to_string();
                     doc.seg_langs.as_mut().unwrap().push(pred);
                 }
+
+                if let Some(index) = &index_main {
+                    // Remove http://www prefix
+                    let url = url_prefix_re
+                        .captures(&doc.u)
+                        .expect("Could not parse url")
+                        .get(3).expect("Could not obtain capture group 3 for url").as_str();
+
+                    // Search in the fst if we have the url
+                    // this time exact match, as we have full urls in the index
+                    if index.contains(url) {
+                        doc.robotstxt = Some(String::from("disallowed"));
+                    } else {
+                        doc.robotstxt = Some(String::from("allowed"));
+                    }
+                }
+
                 doc
             }).collect();
 
@@ -114,4 +148,5 @@ fn main() {
     }
 
     read_thread.join().unwrap();
+    Ok(())
 }
