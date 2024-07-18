@@ -1,49 +1,26 @@
 # monotextor-slurm
-Set of scripts to run [monotextor](https://github.com/bitextor/monotextor)-like pipeline under Slurm HPCs.
+Set of scripts to deduplicate and annotate monolingual text corpora.
+Originally started as a [monotextor](https://github.com/bitextor/monotextor)-like pipeline under Slurm HPCs.
 
 
 ## Pipeline description
 ### Merge-batching
-This pipeline reads from directories containing files following the [warc2text](https://github.com/bitextor/warc2text) output format.
-Specifically, it reads from each directory the `url.gz` and `plain_text.gz` files,
-decoding each document in base64 to plain text and writing as output a tab separated file where each line contains a url, paragraph and metadata.
-```
-url1    this is paragraph1      collection1
-url1    this is paragraph2      collection1
-url1    this is paragraph3      collection1
-url2    another paragraph       collection1
-url2
-...
-```
-Right now, the first step of the pipeline expects input directory structure sharded with [giashard](https://github.com/paracrawl/giashard), but any other structure can be used changing the [00.merge-batching](https://github.com/hplt-project/monotextor-slurm/blob/2dc38e1b822b69f5405fa753aa1fb9065ac8201a/00.merge-batching#L48) listing of directories.
-As far as each process in `parallel` receives a directory containing the files above mentioned.
+This pipeline needs as input directories structured as `$COLLECTION_NAME/$BATCH/{metadata,text,lang}.zst` from [warc2text-runner](https://github.com/hplt-project/warc2text-runner).
+The first step will merge for each batch, the three JSONL line-aligned files into a single JSONL, where each document is a JSON object containing the text and all the metadata and language fields.
+Then, for each collection, all the batches will be read sequentially and all the documents will be placed into separated folders for each language detected and, for each language folder, divide into batches if needed.
 
-Current directory pattern expected is `$COLLECTION/$shard/$batch/{plain_text,url}.gz`.
-
-After creating the TSV, files are divided again into batches of similar size and balance the scheduling and parallelization of the processing step.
-
-### Processing
-The processing step consists of three parts:
- - [monofixer](https://github.com/bitextor/bifixer) to fix encoding issues and remove html entities.
- - [monocleaner](https://github.com/bitextor/monocleaner) to add two metadata columns:
-   - Language identified by [fastspell](https://github.com/mbanon/fastspell).
-   - Character fluency score provided by 7-gram character language models.
- - Conversion to JSONL format where each line is a document in JSON format with all the metadata.
-
-In this step, an array job of size number of batches is run.
-Each batch file is processed with one job that allocates a full node and parallelizes processing by lines.
-After that, another job array is submitted where each job is a serial job that converts TSV to JSONL.
+After the data has been prepared, the actual processing takes place, with near-deduplication and annotation.
 
 ### Near-deduplication
 Near-deduplication is performed at document level and across all copllections.
 For each language, a [MinHash LSH](https://ekzhu.com/datasketch/lsh.html) index is built using a modified version of [gaoya](https://github.com/ZJaume/gaoya/tree/minhash_deduper) library to be able to work with larger scale data.
 After an index containing the hashes of all the documents is built, the connected components are computed with [Union-Find](https://en.wikipedia.org/wiki/Disjoint-set_data_structure) algorithm.
 Then all the unique documents and one document per cluster are kept.
-The input of this step are JSONL files and the output is the same format with near-duplicates removed, with all the collections merged and each language files being splitted again.
+The input of this step are JSONL files and the output is the same format with near-duplicates removed.
 
-The process is divided into two Slurm jobs.
-The first one (`./20.index`) reads all the documents, indexes them, builds the connected components and stores in disk the Union-Find vector.
-Then, the second one (`./20.dedup`) reads the Union-Find vector and the documents, discarding near-duplicates according to what the vector indicates.
+The process is divided into two HyperQueue jobs.
+The first one (`./10.index`) reads all the documents, indexes them, builds the connected components and stores in disk the Union-Find vector.
+Then, the second one (`./10.dedup`) reads the Union-Find vector and the documents, discarding near-duplicates according to what the vector indicates.
 
 #### Distributed index
 For very large languages, a distributed approach has been implemented in the gaoya fork.
@@ -54,11 +31,23 @@ Otherwise tens of terabytes will be needed if a single process indexes all the b
 With this approach, each job is computing its own Union-Find vector and storing it in disk.
 The dedup step is performed the same way, but instead all the vectors are read and merged at the beginning.
 
-### Filtering
-The process of cleaning adds a new metadata field (`"filter"`) to each document that indicates if the document should be kept or not, and when not, indicate the discarding reason.
+### Annotation
+The annotation step consists of adding multiple metadata fields to each document (using [annotate.py](scripts/annotate.py)):
+ - `id`: unique id for the document, derived from the WARC file, url and timestamp (`f`, `u`, `ts` fields).
+ - `seg-langs`: segment level language identification. An array of size equal to the number of segments in the document (each segment being delimited by a `\n`).
+ - `robots`: robots.txt compliance (if the document has been disallowed for crawling for one of our relevant user agents: `*`, `ia-archiver`, `CCbot`).
+ - [monofixer](https://github.com/bitextor/bifixer) to fix encoding issues and remove html entities. This step does not add any metadata field, it just fixes the document text.
+ - `pii`: look for PII information with [multilingual-pii-tool](https://github.com/mmanteli/multilingual-PII-tool).
+ - `filter`: if document matches any of the [filtering criteria](#filtering).
+ - `doc_scores`: document quality scores with [web-docs-scorer](https://github.com/pablop16n/web-docs-scorer/). An array where the first position is the overall quality score and the rest are the sub-scores used to determine the overall score.
+
+The output of this step will produce the same documents as input with the added metadata information.
+
+#### Filtering
+The process of annotation adds a new metadata field (`filter`) to each document that indicates if the document should be kept or not, and when not, indicate the discarding reason.
 Possible values are:
  - `keep`: the document does not match any of the filtering criteria.
- - `adult_ut1`: the url of the document matches one of the domains in UT1 adult list. To perform matches, full domains are searched in the list. If they don't not match, a second iteration tries search by removing the subdomains.
+ - `adult_ut1`: the url of the document matches one of the domains in [UT1](https://dsi.ut-capitole.fr/blacklists/index_en.php) adult list. To perform matches, full domains are searched in the list. If they don't not match, a second iteration tries search by removing the subdomains.
  - `length_XX`: the text of the document has less than XX characters. Default: 200.
  - `lang_ratio_XX`: the ratio of languages by segment that match the document language is less than XX. Default: 0.2 (at least 20% of the segment languages in a document are the same as the document language).
  - `word_avg_X`: the average number of words per segment is less than X. Default: 5.
