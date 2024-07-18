@@ -138,20 +138,24 @@ When all the deduplication tasks have finished, the annotation can be eexecuted.
 ```
 
 ## Output format
-The output format is JSONL, where each line is a valid JSON value and a full document with all its metadata.
+The output format is JSONL, where each line is a valid JSON value and a full document with all its metadata and text content.
 For example, the resulting JSON will be something like:
 ```json
-{"id":1, "document_lang":"en", 
-    "scores":[0.76,0.76,0.76],
-    "langs":["en","en","en"],
+{"f":"./path/to/80716-00467.warc.gz","o":578687,"s":9202,"rs":102649,
+    "u":"https://www.example.com/some_text","c":"text/html","ts":"2021-05-09T10:26:25Z",
+    "collection":"wide17",
+    "lang":["eng_Latn","fra_Latn","deu_Latn"],"prob":[0.7479,0.076,0.0492],
     "text":"this is paragraph1\nthis is paragraph2\nthis is paragraph3",
-    "url":"url1", "collection":"collection-1" 
-}
-{"id":2, "document_lang":"en",
-    "scores":[0.65,...],
-    "langs":["en",...],
+    "seg_langs": ["eng_Latn","eng_Latn","eng_Latn"],
+    "id":"b8ff3519ba78334d6f63ed20239c42ce",
+    "filter":"word_avg_5",
+    "pii":[[23,34],[41,45]],
+    "doc_scores":[7.7,9.7,10.0,9.8,10.0,9.8,10.0,3.0,0.0],
+    "robots":"allowed"}
+{"f":"./path/to/80716-00468.warc.gz","o":579437,"s":1100,"rs":44535,
+...
     "text":"another paragraph\n...",
 ...
 ```
-In each document, each paragraph is concatenated using new-line separators.
-`langs` and `scores` are lists containing one entry per paragraph, corresponding to the language identified and monocleaner score of each one.
+In each document `text` field, each paragraph is concatenated using new-line separators.
+The first 7 fields are inherited from `warc2text` HTML extraction from the WARCs, explained [here](https://github.com/bitextor/warc2text/tree/v1.2.0#stdout), with the exception of `p` field which is replaced by `text` and `l` replaced by `lang` and `prob`, which describe the three top identified languages for the document and their prediction probabilities.
