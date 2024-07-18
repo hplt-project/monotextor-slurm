@@ -72,6 +72,12 @@ The build procedure can be performed in a local machine with these simple steps:
 ```
 This requires [Docker](https://docs.docker.com/engine/install/) and [Singularity](https://docs.sylabs.io/guides/3.5/user-guide/quick_start.html) to be installed on the local machine and the cluster has to support Singularity containers execution.
 
+### Set up HyperQueue
+For the second and third steps, the pipeline uses [HyperQueue](https://it4innovations.github.io/hyperqueue/stable/installation/) to schedule jobs.
+To set it up, follow the HQ installation instructions, placing its binary in any directory of `$PATH`.
+Then, it is recommended to start a terminal multiplexer like `screen` or `tmux` and run `hq server start` in a separated window.
+After that, the pipeline can start running. HQ is only needed from `10.dedup.sh` and onwards because the merge-batching submits jobs directly to SLURM, so HQ server does not need to be up during that process.
+
 ## Configure
 Copy the `.env.example` to `.env` and edit the variables accordingly.
 Needed variables are:
@@ -108,54 +114,28 @@ This allows a more balanced processing during deduplication.
 
 ## Running the pipeline
 Running the pipeline is pretty simple.
-For each language and for each collection we need to run the following steps.
-
-Do the batching with
+First, for each collection we need to run the merge-batching with
 ```
-./00.merge-batching.sh <lang> <collection_name>
+./00.merge-batching.sh <collection_name>
 ```
 For example:
 ```
-./00.merge-batching.sh bg wide16
+./00.merge-batching.sh wide16
 ```
+where collection name is one of the keys in the `$COLLECTIONS` array.
 
-After batching is finished (CAUTION! merge-batching job needs to be finished in order to let processing know the number of batches) run the processing with
+After batching is finished for all the collections, run the deduplication with
 ```
-./10.processing.sh <lang> <job_array_index> <collection_name>
+./10.dedup.sh
 ```
-For example:
-```
-./10.processing.sh bg all wide17
-```
+The submission script will create the list of tasks, where each pair of collection-language is a task, then ask for confirmation.
+After confirmation, the script will block, showing the progress for all the tasks.
+Be aware that this process may take hours or days, so it is recommended to run it in a terminal multiplexer like `tmux` or `screen`, to be able to detach and close the ssh connection to the cluster without killing the process.
 
-If some jobs fail, they can be run again with
+When all the deduplication tasks have finished, the annotation can be eexecuted. For the annotation step, the same logic is applied, just run
 ```
-./10.processing.sh bg failed wide17
+./20.processing.sh
 ```
-or run a subset of all the batches (e.g. because of scheduling restriction does not allow more jobs than the size of the array, or there are other jobs running that are taking up some of the resources allowed) with
-```
-./10.processing.sh bg 45-118 wide17
-```
-
-To run deduplication, simply run:
-```
-./20.dedup.sh bg
-```
-
-For very large languages (probably Chinese and English), distributed approach is needed. To do that run:
-```
-./20.dedup.sh en dist
-```
-This will run for the index step a job array, where each job indexes and stores only one MinHash band.
-
-Note that the [Slurm parameters](https://github.com/hplt-project/monotextor-slurm/blob/0c66e74db65acc489b2cb7b712d558a0cebe4f42/20.index#L8) for the indexing step will need to be adjusted accordingly.
-For the HPLT v1.1, 128 cores an 7000MB per core were used, in order to use 1TB nodes in LUMI.
-
-### Retrying
-The proecessing script also takes care of waiting and retrying submit if a submission fails due to `AssocMaxSubmitJobLimit` error.
-In that case the script proces will wait indefinetly until it's able to submit all the remaining jobs.
-Also, in case of the job array index being larger than the limit (currently 120), it will submit them in groups of 60.
-
 
 ## Output format
 The output format is JSONL, where each line is a valid JSON value and a full document with all its metadata.
