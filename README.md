@@ -37,7 +37,7 @@ The annotation step consists of adding multiple metadata fields to each document
  - `seg-langs`: segment level language identification. An array of size equal to the number of segments in the document (each segment being delimited by a `\n`).
  - `robots`: robots.txt compliance (if the document has been disallowed for crawling for one of our relevant user agents: `*`, `ia-archiver`, `CCbot`).
  - [monofixer](https://github.com/bitextor/bifixer) to fix encoding issues and remove html entities. This step does not add any metadata field, it just fixes the document text.
- - `pii`: look for PII information with [multilingual-pii-tool](https://github.com/mmanteli/multilingual-PII-tool).
+ - `pii`: look for PII information with [multilingual-pii-tool](https://github.com/mmanteli/multilingual-PII-tool). In case it any match is found, the field specifies the unicode character offsets for every match.
  - `filter`: if document matches any of the [filtering criteria](#filtering).
  - `doc_scores`: document quality scores with [web-docs-scorer](https://github.com/pablop16n/web-docs-scorer/). An array where the first position is the overall quality score and the rest are the sub-scores used to determine the overall score.
 
@@ -63,17 +63,14 @@ These language exceptions are:
  - Malay and Indonesian tend to mix up with each other.
 
 ## Install
-Install requirements inside your virtual environment.
+To avoid conflicts with the cluster installed software or available modules and be more cluster filesystem friendly, deacreasing dramatically the amount of files needed for the software installation, a Singularity container needs to be built.
+The build procedure can be performed in a local machine with these simple steps:
 ```
-pip install -r requirements.txt
+# docker build -t monotextor:latest .
+# singularity build -F monotextor.sif monotextor.def
+# rsync monotextor.sif user@your-cluster:/path/to/monotextor-slurm
 ```
-
-Install Rust utils:
-```
-cargo install --root path/to/venv --path utils/
-```
-root directory to be installed can be any directory containing a `bin` directory and make sure it is in `PATH`.
-For example another path could be `$HOME/.local` and in that case, add `$HOME/.local/bin` to `PATH` in the configuration below.
+This requires [Docker](https://docs.docker.com/engine/install/) and [Singularity](https://docs.sylabs.io/guides/3.5/user-guide/quick_start.html) to be installed on the local machine and the cluster has to support Singularity containers execution.
 
 ## Configure
 Copy the `.env.example` to `.env` and edit the variables accordingly.
@@ -84,18 +81,30 @@ SLURM_LOGS_DIR          Directory where all the job logs will be stored.
 WORKSPACE               Directory where all the processing output will be stored.
 MONOCLEANER_MODELS      Directory containing monocleaner models.
 FLASH_TMP               Temporary directory for merge-batch parallel step (recommended flash storage partition).
-PYTHONUSERBASE          Path to the bin directory of Python environment and Rust utils.
-PATH                    Add PYTHONUSERBASE to the PATH.
-PYTHONPATH              site-packages path to the Python environment.
 COLLECTIONS             Associative array with collection names and paths.
 ```
 
-When using a PIP or Conda environment on LUMI, `PYTHONUSERBASE` AND `PYTHONPATH` are not needed.
-Only adding the `bin` directory of the environment to the `PATH` like this
+An example of the collections array looks like this:
+```bash
+INPUT_DIR=/scratch/project_XXXXXX/w2t-runner-output
+declare -A COLLECTIONS=(
+    ["cc13"]=$INPUT_DIR/CC-MAIN-2013
+    ["cc14"]=$INPUT_DIR/CC-MAIN-2014
+    ...
+    ["cc22"]=$INPUT_DIR/CC-MAIN-2022
+    ["cc23"]=$INPUT_DIR/CC-MAIN-2023
+    ["wide5"]="$INPUT_DIR/wide00005"
+    ["wide6"]="$INPUT_DIR/wide00006"
+    ["wide10"]="$INPUT_DIR/wide00010"
+    ...
+    ["wide15"]="$INPUT_DIR/wide00015"
+    ["wide16"]="$INPUT_DIR/wide00016"
+    ["wide17"]="$INPUT_DIR/wide00017"
+)
 ```
-export PATH=/project/project_XXXXX/my_dir/my_env/bin:$PATH
-```
-
+The pipeline will join multiple collections/crawls if specified as a pattern in the same array entry.
+In the latest HPLT there were more than one Common Crawl collections for the same year, so, for example `CC-MAIN-2014-28` and `CC-MAIN-2014-48` are combined as `cc14`.
+This allows a more balanced processing during deduplication.
 
 ## Running the pipeline
 Running the pipeline is pretty simple.
