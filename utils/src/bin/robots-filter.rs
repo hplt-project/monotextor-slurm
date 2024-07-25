@@ -8,11 +8,11 @@
  * dumping the entries that considers relevant (entries that match a certain set of
  * user-agents, for example) to the input file of this program.
  */
-use std::collections::HashSet;
 use std::io::{self,BufRead};
 use std::fs;
 
 use fst::{Set, IntoStreamer, Streamer};
+use patricia_tree::StringPatriciaSet;
 use regex_automata::dense;
 use env_logger::Env;
 use memmap2::Mmap;
@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     // so each group should be the same domain
     // wee keep the domain name and the disallowed urls for that domain
     let mut cur_domain = String::with_capacity(500);
-    let mut cur_allowance: HashSet<String> = HashSet::with_capacity(200);
+    let mut cur_allowance: StringPatriciaSet = StringPatriciaSet::new();
 
     for (i, line_result) in lines.enumerate() {
         // parse tab serparted lines
@@ -82,9 +82,10 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
             cur_domain.clear();
             cur_domain.push_str(domain);
             debug!("New domain! {cur_domain}");
-            for u in cur_allowance.drain() {
+            for u in cur_allowance.iter() {
                 println!("{}", u);
             }
+            cur_allowance.clear();
         }
 
         // Escape regex characters that are not supported
