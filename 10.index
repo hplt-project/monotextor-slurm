@@ -21,13 +21,17 @@ JSON_FILES=`ls -1 $INPUT_DIR/batch_*.jsonl.zst`
 echo $JSON_FILES >&2
 
 # If it's an array job, do distributed index
-#if env | grep -q 'SLURM_ARRAY_TASK_ID'; then
-#    PARAMS="-b $((SLURM_ARRAY_TASK_ID-1))"
-#    OUTPUT_FILE=$DIR/clusters.$SLURM_ARRAY_TASK_ID.zst
-PARAMS=""
-OUTPUT_FILE=$INPUT_DIR/clusters.zst
+if [[ ${#args[@]} -eq 2 ]]; then
+    band=${args[1]}
+    PARAMS="-b $((band-1))"
+    OUTPUT_FILE=$INPUT_DIR/clusters.${args[1]}.zst
+else
+    PARAMS=""
+    OUTPUT_FILE=$INPUT_DIR/clusters.zst
+fi
+
 if test -s $OUTPUT_FILE; then
-    echo Clusters file already exists, exiting... $OUTPUT_FILE
+    echo Clusters file already exists, exiting... $OUTPUT_FILE >&2
     exit 0
 fi
 

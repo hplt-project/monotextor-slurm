@@ -34,23 +34,26 @@ compress-batch(){
 export -f compress-batch
 
 
-#TODO check if the task has already done
+# check if the task has already done
+temps=$(find $OUTPUT_DIR -name "batch_*.jsonl.zst.tmp" | wc -l)
+if [[ $temps -eq 0 ]] && ! [ -z "$(ls $OUTPUT_DIR)" ]; then
+    echo "Task '$HQ_ENTRY' already done" >&2
+    exit 0
+fi
 
-#CLUSTER_FILES=""
-#if [ -f $DIR/clusters.zst ]; then
-#    # Single clusters file
-#    CLUSTER_FILES=$DIR/clusters.zst
-#    dedup $CLUSTER_FILES $JSON_FILES
-#    #rm $CLUSTER_FILES
-#else
-#    # Distributed index, multiple clusters files
-#    CLUSTER_FILES=$DIR/clusters.[0-9]*.zst
-#    dedup <(cat $CLUSTER_FILES) $JSON_FILES
-#    #rm $CLUSTER_FILES
-#fi
-singularity exec --bind $(pwd -P) --bind $INPUT_DIR --pwd $(pwd -P) monotextor.sif \
-    dedup $INPUT_DIR/clusters.zst $JSON_FILES \
-| split - \
+sing="singularity exec --bind $(pwd -P) --bind $INPUT_DIR --pwd $(pwd -P) monotextor.sif"
+CLUSTER_FILES=""
+if [ -f $INPUT_DIR/clusters.zst ]; then
+    # Single clusters file
+    CLUSTER_FILES=$INPUT_DIR/clusters.zst
+    $sing dedup $CLUSTER_FILES $JSON_FILES
+    #rm $CLUSTER_FILES
+else
+    # Distributed index, multiple clusters files
+    CLUSTER_FILES=$INPUT_DIR/clusters.[0-9]*.zst
+    $sing dedup <(cat $CLUSTER_FILES) $JSON_FILES
+    #rm $CLUSTER_FILES
+fi | split - \
     --numeric-suffixes=1 -a 8 -C 120G \
     --filter='compress-batch $FILE' \
     $OUTPUT_DIR/batch_
