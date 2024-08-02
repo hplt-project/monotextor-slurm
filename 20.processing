@@ -6,20 +6,21 @@ set -euo pipefail
 IFS=" " read -ra args <<< $HQ_ENTRY
 L=${args[0]}
 COLL=${args[1]}
-batchid=${args[2]}
-INPUT=$WORKSPACE/dedup/$COLL/$L/batch_$batchid.jsonl.zst
+batch=${args[2]}
+INPUT=$WORKSPACE/dedup/$COLL/$L/$batch
 out_dir=$WORKSPACE/annotated/$COLL/$L
-OUTPUT=$out_dir/batch_$batchid.jsonl.zst
+OUTPUT=$out_dir/$batch
 mkdir -p $out_dir
 
-echo running $L $COLL $batchid
+echo running $L $COLL $batch
 
 # Run annotation parallel loop
 # singularity container will run gnu parallel to avoid many containers being launched
 # container needs the current dir to be mounted
+/usr/bin/time -v \
 zstdcat $INPUT \
 | singularity exec monotextor.sif \
-    langid-seg /usr/local/lib/python3.10/dist-packages/heli_otr \
+    annotator \
 | singularity exec --bind $(pwd -P) --pwd $(pwd -P) monotextor.sif \
 parallel --pipe -k \
     --halt now,fail=1 \

@@ -40,7 +40,7 @@ if args.all:
     args.language = True
 
 isolang = Lang(args.lang.split('_')[0])
-print(isolang, file=sys.stderr)
+#print(isolang, file=sys.stderr)
 
 #print(sys.argv, file=sys.stderr)
 
