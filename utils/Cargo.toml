@@ -27,6 +27,7 @@ fst = "0.4.7"
 regex-automata = { version = "0.1.9", features = ["transducer"] }
 memmap2 = "0.9.4"
 patricia_tree = "0.8.0"
+indicatif = {version = "0.17.8", features = ["rayon"]}
 
 [dev-dependencies]
 assert_cmd = "2.0.12"
