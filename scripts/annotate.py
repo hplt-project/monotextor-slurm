@@ -39,6 +39,9 @@ if args.all:
     args.minimum = True
     args.language = True
 
+if args.lang.split('_')[0] in ('jpn','kor','yue','zho'):
+    args.cjk = True
+
 isolang = Lang(args.lang.split('_')[0])
 #print(isolang, file=sys.stderr)
 
