@@ -10,7 +10,7 @@ domain_re = re.compile("(https?://)?(www.)?([^/]*)(/.*)")
 
 allow_re = re.compile("((Dis)?Allow): ?(\/.*?)(#.*)?$", re.I)
 blank_re = re.compile("^\s*$")
-agent_re =  re.compile("^User-agent: ?([\*\.\\\-\_a-z]+?)(#.*)?$", re.I)
+agent_re =  re.compile("^User-agent: ?([^#]+?)(#.*)?$", re.I)
 agents = ('ia_archiver', 'ccbot', '*')
 
 tbl = [chr(i) for i in range(sys.maxunicode) if not cat(chr(i)).startswith('L') and chr(i) not in [',', '-','_', '*']]
@@ -18,15 +18,31 @@ clean_agent_chars = str.maketrans('', '', ''.join(tbl))
 
 def parse(robotstext, domain):
     allowance = False
+    agent_zone = False
     for line in robotstext.split('\n'):
         if line.startswith('#'):
             continue # ignore comments
 
         agent_match = agent_re.match(line)
         # If our user-agents are found, do not ignore following entries
-        if agent_match and agent_match.groups()[0] in agents:
-            allowance = True
+        # For consecutive  user-agent specifictions, set "agent_zone" to True
+        # all considered to be the same entry, so if one user agent of our relevants
+        # is found in a collection of consecutive user-agent lines
+        # conssider the entry as relevant
+        if agent_match:
+            if not agent_zone:
+                allowance = False # reset the allowance variable if we found a new entry
+            if agent_match.groups()[0].lower() in agents:
+                allowance = True
+            elif agent_zone:
+                pass
+            else:
+                # The user agent has changed to one non relevant
+                allowance = False
+            agent_zone = True
             continue
+        else:
+            agent_zone = False
 
         # Parse entry for our agents
         if allowance:
