@@ -29,10 +29,12 @@ extracturls() {
 }
 extractrobots() {
     local input=$1/robotstxt.warc.gz
+    local robotsjson=$2/robotstxt.jsonl.zst
     local output=$2/robotstxt.tsv
     mkdir -p $2
 
     warc2text -s --stdout --jsonl --classifier skip --robots-process $input \
+    | tee >(zstd >$robotsjson) \
     | python scripts/robots2tsv.py \
     > $output.tmp
     mv $output.tmp $output
@@ -41,8 +43,10 @@ robotsfilterbatch() {
     local input=$1
     local output=$input/disallowed-urls.zst
 
+    test -s $output && return 0
+
     robots-filter $OUTPUT_DIR/urls.fst $input/robotstxt.tsv \
-    | zstd >$output.tmp
+    | zstdmt >$output.tmp
 
     mv $output.tmp $output
 }
@@ -59,7 +63,7 @@ parallel -j$SLURM_CPUS_ON_NODE --halt now,fail=1 \
     extractrobots {} $OUTPUT_DIR/{\#} ::: $batches
 
 # Extract urls from metadata
-parallel -j$SLURM_CPUS_ON_NODE --halt now,fail=1 \
+parallel -j$((SLURM_CPUS_ON_NODE/2)) --halt now,fail=1 \
     extracturls {} $OUTPUT_DIR/{\#} ::: $batches
 
 # Concat all urls and sort them
@@ -74,17 +78,26 @@ LC_ALL=C sort -m -u \
 singularity exec --bind $OUTPUT_DIR monotextor.sif \
     fst set --force --sorted $OUTPUT_DIR/urls.sorted.txt $OUTPUT_DIR/urls.fst
 
-# Query with robotstxt extracted patterns the urls index and extract disallowed urls
+ Query with robotstxt extracted patterns the urls index and extract disallowed urls
 binddirs=$OUTPUT_DIR,$(pwd -P)
-singularity exec --bind $binddirs --pwd $(pwd -P) monotextor.sif \
-parallel -j$SLURM_CPUS_ON_NODE --halt now,fail=1 \
-    robotsfilterbatch {} ::: `find $OUTPUT_DIR -mindepth 1 -maxdepth 1 -type d`
+singularity exec --bind $binddirs --pwd $(pwd -P) --env RAYON_NUM_THREADS=8 monotextor.sif \
+    robots-filter $OUTPUT_DIR/urls.fst $OUTPUT_DIR/*/robotstxt.tsv \
+| zstdmt >$OUTPUT_DIR/disallowed-urls.unsorted.zst.tmp
+mv $OUTPUT_DIR/disallowed-urls.unsorted.zst.tmp $OUTPUT_DIR/disallowed-urls.unsorted.zst
 
-zstdcat $OUTPUT_DIR/*/disallowed-urls.zst \
+zstdcat $OUTPUT_DIR/disallowed-urls.unsorted.zst \
 | LC_ALL=C sort -S 80% -u \
     -T $WORKSPACE/tmp \
     --parallel=$SLURM_CPUS_ON_NODE --compress-program=zstdmt \
-| zstdmt >$OUTPUT_DIR/disallowed-urls.zst.tmp
+>$OUTPUT_DIR/disallowed-urls.tmp
 
-mv $OUTPUT_DIR/disallowed-urls.zst.tmp $OUTPUT_DIR/disallowed-urls.zst
+mv $OUTPUT_DIR/disallowed-urls.tmp $OUTPUT_DIR/disallowed-urls
+
+# Create the FST index of disallowed urls
+singularity exec --bind $OUTPUT_DIR monotextor.sif \
+    fst set --force --sorted $OUTPUT_DIR/disallowed-urls $OUTPUT_DIR/disallowed-urls.fst.tmp
+
+zstdmt -qf --rm $OUTPUT_DIR/disallowed-urls
+mv $OUTPUT_DIR/disallowed-urls.fst.tmp $OUTPUT_DIR/disallowed-urls.fst
+
 #TODO cleanup
