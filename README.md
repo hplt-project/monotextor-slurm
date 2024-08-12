@@ -32,6 +32,16 @@ Otherwise tens of terabytes will be needed if a single process indexes all the b
 With this approach, each job is computing its own Union-Find vector and storing it in disk.
 The dedup step is performed the same way, but instead all the vectors are read and merged at the beginning.
 
+#### Filtering
+The process of annotation adds a new metadata field (`filter`) to each document that indicates if the document should be kept or not, and when not, indicate the discarding reason.
+Possible values are:
+ - `keep`: the document does not match any of the filtering criteria.
+ - `adult_ut1`: the url of the document matches one of the domains in [UT1](https://dsi.ut-capitole.fr/blacklists/index_en.php) adult list. To perform matches, full domains are searched in the list. If they don't not match, a second iteration tries search by removing the subdomains.
+ - `length_XX`: the text of the document has less than XX characters. Default: 500.
+ - `lang_ratio_XX`: the ratio of languages by segment that match the document language is less than XX. Default: 0.2 (at least 20% of the segment languages in a document are the same as the document language).
+ - `word_avg_X`: the average number of words per segment is less than X. Default: 5.
+ - `cha\_avg_X`: the average number of characters per segment is less than X. This is used for Chinese, Japanese and Korean. Default: 10.
+
 ### Annotation
 The annotation step consists of adding multiple metadata fields to each document (using [annotate.py](scripts/annotate.py)):
  - `id`: unique id for the document, derived from the WARC file, url and timestamp (`f`, `u`, `ts` fields).
@@ -43,25 +53,6 @@ The annotation step consists of adding multiple metadata fields to each document
  - `doc_scores`: document quality scores with [web-docs-scorer](https://github.com/pablop16n/web-docs-scorer/). An array where the first position is the overall quality score and the rest are the sub-scores used to determine the overall score.
 
 The output of this step will produce the same documents as input with the added metadata information.
-
-#### Filtering
-The process of annotation adds a new metadata field (`filter`) to each document that indicates if the document should be kept or not, and when not, indicate the discarding reason.
-Possible values are:
- - `keep`: the document does not match any of the filtering criteria.
- - `adult_ut1`: the url of the document matches one of the domains in [UT1](https://dsi.ut-capitole.fr/blacklists/index_en.php) adult list. To perform matches, full domains are searched in the list. If they don't not match, a second iteration tries search by removing the subdomains.
- - `length_XX`: the text of the document has less than XX characters. Default: 200.
- - `lang_ratio_XX`: the ratio of languages by segment that match the document language is less than XX. Default: 0.2 (at least 20% of the segment languages in a document are the same as the document language).
- - `word_avg_X`: the average number of words per segment is less than X. Default: 5.
- - `cha\_avg_X`: the average number of characters per segment is less than X. This is used for Chinese, Japanese and Korean. Default: 10.
-
-There are languages considered exceptions for the language ratio rule and it is disabled.
-This is mainly because some languages either have poor language identification at segment level or the the majority of documents have a very high portion of boilerplate and/or English.
-Sometimes both cases.
-Therefore language ratio rule ends up being too aggressive.
-These language exceptions are:
- - Afrikaans, Swahili, Somali and Tagalog for the reasons explained above.
- - Uzbek segment level language identification is tagging all the Cyrillic as other languages.
- - Malay and Indonesian tend to mix up with each other.
 
 ## Install
 To avoid conflicts with the cluster installed software or available modules and be more cluster filesystem friendly, deacreasing dramatically the amount of files needed for the software installation, a Singularity container needs to be built.
