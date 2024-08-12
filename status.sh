@@ -34,5 +34,4 @@ for c in $colls; do
     else
         printf "annotated\t"
     fi
-done 2>/dev/null
-echo
+done 2>/dev/null | cut -f-21
