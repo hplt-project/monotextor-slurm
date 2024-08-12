@@ -1,7 +1,6 @@
 [[ ${SBATCH_ACCOUNT-} ]] || { echo "\$SBATCH_ACCOUNT has to be defined in .env"; exit 1; }
 [[ ${SLURM_LOGS_DIR-} ]] || { echo "\$SLURM_LOGS_DIR has to be defined in .env"; exit 1; }
 [[ ${WORKSPACE-} ]] || { echo "\$WORKSPACE has to be defined in .env"; exit 1; }
-[[ ${MONOCLEANER_MODELS-} ]] || { echo "\$MONOCLEANER_MODELS has to be defined in .env"; exit 1; }
 [[ ${FLASH_TMP-} ]] || { echo "\$FLASH_TMP has to be defined in .env"; exit 1; }
 
 confirm() {
@@ -10,3 +9,11 @@ confirm() {
     echo
 }
 export PROFILER="/usr/bin/time -v"
+
+get_seeded_random()
+{
+    seed="$1"
+    openssl enc -aes-256-ctr -pass pass:"$seed" -nosalt \
+        </dev/zero 2>/dev/null
+}
+export -f get_seeded_random
