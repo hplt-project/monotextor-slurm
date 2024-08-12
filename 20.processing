@@ -17,11 +17,12 @@ echo running $L $COLL $batch
 # Run annotation parallel loop
 # singularity container will run gnu parallel to avoid many containers being launched
 # container needs the current dir to be mounted
-/usr/bin/time -v \
 zstdcat $INPUT \
-| singularity exec monotextor.sif \
-    annotator \
-| singularity exec --bind $(pwd -P) --pwd $(pwd -P) monotextor.sif \
+| /usr/bin/time -v \
+singularity exec --bind $WORKSPACE/robotstxt monotextor.sif \
+    annotator -d $WORKSPACE/robotstxt/$COLL/disallowed-urls.fst \
+| /usr/bin/time -v \
+singularity exec --bind $(pwd -P) --pwd $(pwd -P) monotextor.sif \
 parallel --pipe -k \
     --halt now,fail=1 \
     -j200 --block 20M python scripts/annotate.py -a $L \
