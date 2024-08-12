@@ -1,0 +1,38 @@
+#!/bin/bash
+source .env
+source .checks
+set -euo pipefail
+
+L=$1
+INPUT_DIR=$WORKSPACE/annotated
+OUTPUT_DIR=$WORKSPACE/collections_merged/$L
+mkdir -p $OUTPUT_DIR
+
+files=`echo $INPUT_DIR/*/$L/batch_*.jsonl.zst`
+total_size=`du -bc $files | tail -1 | cut -f1`
+echo "'$L' files: $files"
+echo "Total $L size: $(echo $total_size | numfmt --to=iec)"
+
+rm -f $OUTPUT_DIR/*
+touch $OUTPUT_DIR/unfinished
+cum_size=0
+num=0
+for f in $files
+do
+    size=`du $f | tail -1 | cut -f1`
+    if [[ $((size+cum_size)) -gt 40000000 ]] || [[ $num -eq 0 ]];
+    then
+        num=$((num+1))
+        cum_size=0
+        out=$OUTPUT_DIR/batch_$num.jsonl.zst
+        echo "New batch $out, copying.."
+        cp $f $out
+        continue
+    fi
+    echo "Concat file $f to $out"
+    cat $f >>$out
+    cum_size=$((cum_size+size))
+done
+rm $OUTPUT_DIR/unfinished
+sync # wait untill all has been copied, so the final size matches
+echo "Final $L total size: $(du -ch $OUTPUT_DIR/batch_*.jsonl.zst | tail -1 | cut -f1)"
