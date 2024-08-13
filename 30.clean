@@ -1,54 +1,50 @@
 #!/bin/bash
-#SBATCH --job-name=clean
-#SBATCH --partition="small"
-#SBATCH --time=12:00:00
-##SBATCH --nodes=1
-##SBATCH --ntasks=128
-##SBATCH --mem=0
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=64
-#SBATCH --mem-per-cpu=1750
-#SBATCH --output=logs/%x-%A_%a.out
-module load cray-python/3.9.12.1
-module load parallel
 source .env
+source .checks
 set -euo pipefail
+module load parallel
 
-L=$1
-input_dir=dedup
-output_dir=clean
-if [ "$EXTERNAL" = true ]; then
-    input_dir=external
-    output_dir=external_clean
+IFS=" " read -ra args <<< $HQ_ENTRY
+L=${args[0]}
+INPUT_DIR=$WORKSPACE/collections_merged/$L
+OUTPUT_DIR=$WORKSPACE/cleaned/$L
+mkdir -p $OUTPUT_DIR
+
+# Read the split output, compress it to temp, then move
+compress-batch(){
+    local file=$1
+    # Remove 0s prefix
+    local name=$(echo $file | sed -E "s/\_0+/_/g")
+
+    # compress stdin, write to a temp
+    zstdmt -10 >$name.jsonl.zst.tmp
+
+    # remove temp suffix
+    mv $name.jsonl.zst.tmp $name.jsonl.zst
+}
+clean() {
+    jq -c '. | select(.filter == "keep" and .robotstxt == "allowed" and .doc_scores[0] >= 5)'
+}
+export -f compress-batch
+export -f clean
+process-file() {
+    local input_dir=$1
+    local output_dir=$2
+    local batch=`basename $3`
+    zstdcat $input_dir/$batch | clean | zstdmt -10 >$output_dir/$batch.tmp
+    mv $output_dir/$batch.tmp $output_dir/$batch
+}
+export -f process-file
+
+# For the biggest languages, filter each file individually instead of in serial and re-batching
+#if echo $L | grep -q 'eng_Latn\|rus_Cyrl\|zho_Hans'; then
+if [[ $(ls -1 $INPUT_DIR/batch_*.jsonl.zst | wc -l) -gt 2 ]]; then
+    parallel -j48 process-file $INPUT_DIR $OUTPUT_DIR ::: `ls $INPUT_DIR/batch_*.jsonl.zst`
+else
+    zstdcat $INPUT_DIR/batch_*.jsonl.zst \
+    | parallel -j32 --block 50M --pipe --halt now,fail=1 clean \
+    | split - \
+        --numeric-suffixes=1 -a 8 -C 120G \
+        --filter='compress-batch $FILE' \
+        $OUTPUT_DIR/batch_
 fi
-INPUT=$WORKSPACE/$input_dir/$L/${L}_$SLURM_ARRAY_TASK_ID.jsonl.zst
-OUTPUT=$WORKSPACE/$output_dir/$L/${L}_$SLURM_ARRAY_TASK_ID.jsonl.zst
-mkdir -p $WORKSPACE/$output_dir/$L
-
-case "$L" in
-    zh | ja | ko)
-        FILTER_PARAMS="-a -z";;
-    af | tl | ms | id | uz | sw | so)
-        FILTER_PARAMS="-e -w -m";;
-    fi)
-        FILTER_PARAMS="-a -E";;
-    *)
-        FILTER_PARAMS="-a";;
-esac
-if [ "$EXTERNAL" = true ]; then
-    FILTER_PARAMS="-w -m";
-fi
-if [ "$DISCARD" = true ]; then
-    FILTER_PARAMS="$FILTER_PARAMS -f";
-fi
-
-# Do not use -k, we don't care if documents appear in
-# different order
-zstdcat $INPUT \
-| parallel --pipe --halt now,fail=1 \
-    -j$SLURM_CPUS_ON_NODE --block 10M \
-    python filter-docs.py $FILTER_PARAMS \
-| zstdmt -T64 -10 \
->$OUTPUT.tmp
-
-mv $OUTPUT.tmp $OUTPUT
