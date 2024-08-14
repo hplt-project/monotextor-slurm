@@ -50,11 +50,11 @@ The annotation step consists of adding multiple metadata fields to each document
  - [monofixer](https://github.com/bitextor/bifixer) to fix encoding issues and remove html entities. This step does not add any metadata field, it just fixes the document text.
  - `pii`: look for PII information with [multilingual-pii-tool](https://github.com/mmanteli/multilingual-PII-tool). In case it any match is found, the field specifies the unicode character offsets for every match.
  - `filter`: if document matches any of the [filtering criteria](#filtering).
- - `doc_scores`: document quality scores with [web-docs-scorer](https://github.com/pablop16n/web-docs-scorer/). An array where the first position is the overall quality score and the rest are the sub-scores used to determine the overall score.
+ - `doc_scores`: document quality scores with [web-docs-scorer](https://github.com/pablop16n/web-docs-scorer/). An array where the first position is the overall quality score and the rest are the sub-scores used to determine the overall score. All of the scores ranging values from 0 to 10.
 
 The output of this step will produce the same documents as input with the added metadata information.
 
-#### Filtering
+#### Filters
 The process of annotation adds a new metadata field (`filter`) to each document that indicates if the document should be kept or not, and when not, indicate the discarding reason.
 Possible values are:
  - `keep`: the document does not match any of the filtering criteria.
@@ -64,6 +64,13 @@ Possible values are:
  - `word_avg_X`: the average number of words per segment is less than X. Default: 5.
  - `cha\_avg_X`: the average number of characters per segment is less than X. This is used for Chinese, Japanese and Korean. Default: 10.
 
+### Cleaning
+The previous step added lots of metadata for cleaning purposes, but no documents were removed.
+To do this, the `30.clean.sh` step needs to be run.
+This step will create a new version of the corpus, removing all the documents that do [not meet all of these criteria](30.clean#L26):
+ - The `filter` field value is `keep`.
+ - The `robots` field value is `allowed`.
+ - The overall doccument score (first value of the array: `doc_scores[0]`) is equal or higher than 5.
 
 ## Install
 To avoid conflicts with the cluster installed software or available modules and be more cluster filesystem friendly, deacreasing dramatically the amount of files needed for the software installation, a Singularity container needs to be built.
