@@ -32,11 +32,21 @@ Otherwise tens of terabytes will be needed if a single process indexes all the b
 With this approach, each job is computing its own Union-Find vector and storing it in disk.
 The dedup step is performed the same way, but instead all the vectors are read and merged at the beginning.
 
+### Robots.txt compliance
+To comply with `robots.txt` directives by each web domain, this pipeline includes optional annotation of documents that are not allowed to be crawled.
+To do this, the WARCs containing the `robots.txt` files for each collection, have to be provided in the same input directory structure described in [Merge-batching step](#merge-batching).
+Afterwards, the `robots.txt` processing can be executed in parallel to the main pipeline and will generate a list of disallowed urls for each collection, that will be used by the annotation step.
+The procedure does the following, in one job per collection:
+ - Extract all the urls for that collection and create a compressed index with [FST](https://crates.io/crates/fst).
+ - Exctract all the documents in JSONL format containing `robots.txt` files from the WARCs.
+ - Parse the `robots.txt` files and produce a list allowed and disallowed url patterns for our relevant user agents (`*`, `ia-archiver`, `CCBot`).
+ - Use the patterns to query the urls index and generate a list of disallowed patterns.
+
 ### Annotation
 The annotation step consists of adding multiple metadata fields to each document (using [annotate.py](scripts/annotate.py)):
  - `id`: unique id for the document, derived from the WARC file, url and timestamp (`f`, `u`, `ts` fields).
  - `seg-langs`: segment level language identification. An array of size equal to the number of segments in the document (each segment being delimited by a `\n`).
- - `robots`: robots.txt compliance (if the document has been disallowed for crawling for one of our relevant user agents: `*`, `ia-archiver`, `CCbot`).
+ - `robots`: robots.txt compliance (if the document has been disallowed for crawling.
  - [monofixer](https://github.com/bitextor/bifixer) to fix encoding issues and remove html entities. This step does not add any metadata field, it just fixes the document text.
  - `pii`: look for PII information with [multilingual-pii-tool](https://github.com/mmanteli/multilingual-PII-tool). In case it any match is found, the field specifies the unicode character offsets for every match.
  - `filter`: if document matches any of the [filtering criteria](#filtering).
@@ -123,6 +133,15 @@ After batching is finished for all the collections, run the deduplication with
 The submission script will create the list of tasks, where each pair of collection-language is a task, then ask for confirmation.
 After confirmation, the script will block, showing the progress for all the tasks.
 Be aware that this process may take hours or days, so it is recommended to run it in a terminal multiplexer like `tmux` or `screen`, to be able to detach and close the ssh connection to the cluster without killing the process.
+
+**Optional**: while doling the merge batching or dedup steps, robotstxt processing can run in parallel. This step, however does not use HQ, therefore it has to be submitted manually:
+```
+source .env # load env to have the collections array variable available
+for i in ${!COLLECTIONS[@]}; do
+    sbatch -J $i-robotstxt --mem-per-cpu 7500 09.robotstxt $i
+done
+```
+It is recommended, as shown in the example above, to use large memory nodes (1TB in this case for the LUMI cluster).
 
 When all the deduplication tasks have finished, the annotation can be eexecuted. For the annotation step, the same logic is applied, just run
 ```
