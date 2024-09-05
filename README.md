@@ -60,7 +60,6 @@ Possible values are:
  - `keep`: the document does not match any of the filtering criteria.
  - `adult_ut1`: the url of the document matches one of the domains in [UT1](https://dsi.ut-capitole.fr/blacklists/index_en.php) adult list. To perform matches, full domains are searched in the list. If they don't not match, a second iteration tries search by removing the subdomains.
  - `length_XX`: the text of the document has less than XX characters. Default: 500.
- - `lang_ratio_XX`: the ratio of languages by segment that match the document language is less than XX. Default: 0.2 (at least 20% of the segment languages in a document are the same as the document language).
  - `word_avg_X`: the average number of words per segment is less than X. Default: 5.
  - `cha\_avg_X`: the average number of characters per segment is less than X. This is used for Chinese, Japanese and Korean. Default: 10.
 
