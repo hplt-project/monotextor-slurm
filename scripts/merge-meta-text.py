@@ -21,6 +21,8 @@ with zstandard.open(f'{input_dir}/text.zst', 'rt', errors='strict') as text_file
         except UnicodeDecodeError:
             print(f"WARNING: discarded document with encoding error in metadata. Line {i+1} in file {input_dir}",
                   file=sys.stderr)
+            text_file.readline()
+            lang_file.readline()
             continue
         doc = orjson.loads(line)
         text = orjson.loads(text_file.readline())
