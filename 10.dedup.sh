@@ -11,28 +11,32 @@ fi
 
 # Create the task list
 # sort them by size to start with the biggest
-entries=$(mktemp); trap "rm $entries" EXIT
-dedup_entries=$(mktemp); trap "rm $dedup_entries" EXIT
-temp=$(mktemp); trap "rm $temp" EXIT
-for coll in `echo ${!COLLECTIONS[@]} | tr ' ' '\n' | sort`
-do
-    for lang_dir in `echo $WORKSPACE/batches/$coll/* | tr ' ' '\n'`
+mkdir -p $WORKSPACE/tasks_list
+entries=$WORKSPACE/tasks_list/10.index
+dedup_entries=$WORKSPACE/tasks_list/10.dedup
+if [ ! -s $entries ] || [ ! -s $dedup_entries ];
+then
+    temp=$(mktemp); trap "rm $temp" EXIT
+    for coll in `echo ${!COLLECTIONS[@]} | tr ' ' '\n' | sort`
     do
-        size=`du -c $lang_dir/batch_*.jsonl.zst | tail -1 | cut -f1`
-        # For languages of more than 150GB run distributed index
-        if (( $size > 150000000 )); then
-            for i in `seq 1 17`; do
-                echo "$lang_dir $i"
-            done
-        else
-            echo $lang_dir
-        fi
-    done
-done >$temp
-cat $temp | shuf --random-source=<(get_seeded_random 42) >$entries
+        for lang_dir in `echo $WORKSPACE/batches/$coll/* | tr ' ' '\n'`
+        do
+            size=`du -c $lang_dir/batch_*.jsonl.zst | tail -1 | cut -f1`
+            # For languages of more than 150GB run distributed index
+            if (( $size > 150000000 )); then
+                for i in `seq 1 17`; do
+                    echo "$lang_dir $i"
+                done
+            else
+                echo $lang_dir
+            fi
+        done
+    done | sort -u >$temp
+    cat $temp | shuf --random-source=<(get_seeded_random 42) >$entries
 
-# create entries for dedup
-cat $temp | cut -d' ' -f1 | uniq >$dedup_entries
+    # create entries for dedup
+    cat $temp | cut -d' ' -f1 | uniq >$dedup_entries
+fi
 
 echo $(wc -l $entries) tasks
 confirm
@@ -65,7 +69,7 @@ trap "hq job cancel all; hq alloc remove --force $qid" INT
 set +e # remove strict mode, so if job fails, script does not finish and the queue can be closed afterwards
 hq submit --each-line $entries \
     --nodes 1 --progress \
-    --log=$SLURM_LOGS_DIR/hq-index.log \
+    --stream=$SLURM_LOGS_DIR/hq-10.index.logs \
     --max-fails=10 --crash-limit=5 \
     bash 10.index
 set -e
@@ -80,7 +84,7 @@ hq alloc remove --force $qid
 ### DEDUP
 # create a different queue for dedup, needs less resources
 queue_name=dedup
-newqueue $queue_name $WORKERS 3500
+newqueue $queue_name $WORKERS 1750
 # obtain the allocation queue id
 qid=$(queueid $queue_name)
 trap - INT
@@ -89,7 +93,7 @@ trap "hq job cancel all; hq alloc remove --force $qid" INT
 set +e
 hq submit --each-line $dedup_entries \
     --nodes 1 --progress \
-    --log=$SLURM_LOGS_DIR/hq-dedup.log \
+    --stream=$SLURM_LOGS_DIR/hq-10.dedup.logs \
     --max-fails=10 --crash-limit=5 \
     bash 10.dedup
 set -e

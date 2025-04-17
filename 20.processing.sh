@@ -6,23 +6,27 @@ source .env
 source .checks
 set -euo pipefail
 
-WORKERS=150
+WORKERS=50
 idle_timeout=30s
 
 # Create the task list
-entries=$(mktemp); trap "rm $entries" EXIT
-for coll in `echo ${!COLLECTIONS[@]} | tr ' ' '\n' | sort`
-do
-    for lang in `cat ../langs-two | grep -v unk`
+mkdir -p $WORKSPACE/tasks_list
+entries=$WORKSPACE/tasks_list/20.processing
+if [ ! -s $entries ];
+then
+    for coll in `echo ${!COLLECTIONS[@]} | tr ' ' '\n' | sort`
     do
-        # only create tasks for existing completed dedup files
-        batches=`find $WORKSPACE/dedup/$coll/$lang -type f -name "*batch_*.jsonl.zst" -exec basename {} \;`
-        for batch in $batches;
+        for lang in `cat langs | grep -v unk`
         do
-            echo "$lang $coll $batch"
+            # only create tasks for existing completed dedup files
+            batches=`find $WORKSPACE/dedup/$coll/$lang -type f -name "*batch_*.jsonl.zst" -exec basename {} \;`
+            for batch in $batches;
+            do
+                echo "$lang $coll $batch"
+            done
         done
-    done
-done >$entries
+    done | sort -u >$entries
+fi
 
 echo $(wc -l $entries) tasks
 confirm
@@ -43,7 +47,7 @@ trap "hq alloc remove --force $qid" INT
 set +e # remove strict mode, so if job fails, script does not finish and the queue can be closed afterwards
 hq submit --each-line $entries \
     --nodes 1 --progress \
-    --log=$SLURM_LOGS_DIR/hq-processing.log \
+    --stream=$SLURM_LOGS_DIR/hq-20.processing.logs \
     --max-fails=40 --crash-limit=5 \
     bash 20.processing
 
