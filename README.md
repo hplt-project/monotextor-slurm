@@ -87,6 +87,8 @@ To set it up, follow the HQ installation instructions, placing its binary in any
 Then, it is recommended to start a terminal multiplexer like `screen` or `tmux` and run `hq server start` in a separated window.
 After that, the pipeline can start running. HQ is only needed from `10.dedup.sh` and onwards because the merge-batching submits jobs directly to SLURM, so HQ server does not need to be up during that process.
 
+Currently supported version of HQ is 0.22.
+
 ## Configure
 Copy the `.env.example` to `.env` and edit the variables accordingly.
 Needed variables are:
