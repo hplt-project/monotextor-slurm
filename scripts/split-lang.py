@@ -1,10 +1,20 @@
 import zstandard
+import orjson
 import sys
 import re
 import os
 import io
 
-langs = ["unk", "ace_Arab","ace_Latn","afr_Latn","als_Latn","amh_Ethi","ara_Arab","asm_Beng","ast_Latn","awa_Deva","ayr_Latn","azb_Arab","azj_Latn","bak_Cyrl","bam_Latn","ban_Latn","bel_Cyrl","bem_Latn","ben_Beng","bho_Deva","bjn_Arab","bjn_Latn","bod_Tibt","bos_Latn","bug_Latn","bul_Cyrl","cat_Latn","ceb_Latn","ces_Latn","cjk_Latn","ckb_Arab","crh_Latn","cym_Latn","dan_Latn","deu_Latn","dik_Latn","dyu_Latn","dzo_Tibt","ell_Grek","eng_Latn","epo_Latn","est_Latn","eus_Latn","ewe_Latn","fao_Latn","fij_Latn","fin_Latn","fon_Latn","fra_Latn","fur_Latn","fuv_Latn","gaz_Latn","gla_Latn","gle_Latn","glg_Latn","grn_Latn","guj_Gujr","hat_Latn","hau_Latn","heb_Hebr","hin_Deva","hne_Deva","hrv_Latn","hun_Latn","hye_Armn","ibo_Latn","ilo_Latn","ind_Latn","isl_Latn","ita_Latn","jav_Latn","jpn_Jpan","kab_Latn","kac_Latn","kam_Latn","kan_Knda","kas_Arab","kas_Deva","kat_Geor","kaz_Cyrl","kbp_Latn","kea_Latn","khk_Cyrl","khm_Khmr","kik_Latn","kin_Latn","kir_Cyrl","kmb_Latn","kmr_Latn","knc_Arab","knc_Latn","kon_Latn","kor_Hang","lao_Laoo","lij_Latn","lim_Latn","lin_Latn","lit_Latn","lmo_Latn","ltg_Latn","ltz_Latn","lua_Latn","lug_Latn","luo_Latn","lus_Latn","lvs_Latn","mag_Deva","mai_Deva","mal_Mlym","mar_Deva","min_Latn","mkd_Cyrl","mlt_Latn","mni_Beng","mos_Latn","mri_Latn","mya_Mymr","nld_Latn","nno_Latn","nob_Latn","npi_Deva","nso_Latn","nus_Latn","nya_Latn","oci_Latn","ory_Orya","pag_Latn","pan_Guru","pap_Latn","pbt_Arab","pes_Arab","plt_Latn","pol_Latn","por_Latn","prs_Arab","quy_Latn","ron_Latn","run_Latn","rus_Cyrl","sag_Latn","san_Deva","sat_Olck","scn_Latn","shn_Mymr","sin_Sinh","slk_Latn","slv_Latn","smo_Latn","sna_Latn","snd_Arab","som_Latn","sot_Latn","spa_Latn","srd_Latn","srp_Cyrl","ssw_Latn","sun_Latn","swe_Latn","swh_Latn","szl_Latn","tam_Taml","taq_Latn","taq_Tfng","tat_Cyrl","tel_Telu","tgk_Cyrl","tgl_Latn","tha_Thai","tir_Ethi","tpi_Latn","tsn_Latn","tso_Latn","tuk_Latn","tum_Latn","tur_Latn","twi_Latn","tzm_Tfng","uig_Arab","ukr_Cyrl","umb_Latn","urd_Arab","uzn_Latn","vec_Latn","vie_Latn","war_Latn","wol_Latn","xho_Latn","ydd_Hebr","yor_Latn","yue_Hant","zho_Hans","zho_Hant","zsm_Latn","zul_Latn"]
+SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
+# Load Openlid to HPLT language code mappings
+LANG_MAPPING = {}
+with open(f"{SCRIPT_PATH}/openlidv2_to_hplt_codes.jsonl") as f:
+    for line in f:
+        lang_map = orjson.loads(line)
+        LANG_MAPPING[lang_map["flores_code"]] = lang_map
+
+# Obtain list of final HPLT lang codes
+LANGS = [i["hplt_canonical_label"]+"_"+i["iso15924"] for i in LANG_MAPPING.values()]
 
 THREADS = 10 if "SLURM_CPUS_ON_NODE" not in os.environ else os.environ["SLURM_CPUS_ON_NODE"]
 
@@ -57,8 +67,8 @@ lang_re = re.compile(b'"lang": ?\["([a-z]{3}_[A-Z][a-z]{3})",.*\], ?"prob": ?\[(
 # Create all the lang directories
 # right now, the langcodes are hardcoded, but it could be a dynamic list
 # that creates a new langrwiter every time a new lang is found
-lang_files = {}
-for lang in langs:
+lang_files = {'unk': LangWriter(f'{output_dir}/unk')}
+for lang in LANGS:
     cur_dir = f"{output_dir}/{lang}"
     lang_files[lang] = LangWriter(cur_dir)
 
@@ -81,7 +91,12 @@ for infile in input_files:
 
             # confidence threshold
             if prob < 0.5:
+                lang_files['unk'].write(line)
                 continue
+
+            # Map language to HPLT lang code
+            lang_map = LANG_MAPPING[lang]
+            lang = lang_map["hplt_canonical_label"] + "_" + lang_map["iso15924"]
 
             # move document to its lang dir
             lang_files[lang].write(line)
