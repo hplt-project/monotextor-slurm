@@ -173,6 +173,22 @@ That will be available at `$WORKSPACE/collections-merged`.
 ```
 The output will be available at `$WORKSPACE/cleaned`.
 
+### Tracking logs for HQ tasks
+HyperQueue saves logs grouped in files to avoid writing many files.
+To take a look at the logs, for example when one or more tasks failed, follow these steps:
+
+During the pipeline step execution, HQ will show the ID of the current job. Use that to list the tasks:
+```
+hq task list <job_id> --task-status failed
+```
+Then show the logs from the log directory (note sourcing the env file to have the env variable)
+```
+source .env
+hq output-log $SLURM_LOGS_DIR/hq-20.processing.logs cat <job_id> stderr --task <task_id>
+```
+
+If one or more HQ tasks fail during steps 10, 20 or 30, the output logs
+
 ## Output format
 The output format is JSONL, where each line is a valid JSON value and a full document with all its metadata and text content.
 For example, the resulting JSON will be something like:
