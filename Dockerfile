@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:22.04@sha256:67cadaff1dca187079fce41360d5a7eb6f7dcd3745e53c79ad5efd8563118240
 
 RUN apt-get update && apt-get upgrade -y
 RUN apt-get install -y htop curl parallel git zstd gzip \
