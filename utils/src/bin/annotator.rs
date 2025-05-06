@@ -5,6 +5,7 @@ use std::thread;
 use std::io;
 use std::fs;
 
+use aho_corasick::AhoCorasick;
 use fst::Set;
 use serde::{Deserialize, Serialize};
 use itertools::Itertools;
@@ -25,6 +26,8 @@ struct Args {
     modelpath: Option<String>,
     #[clap(short, help="Add robotstxt disallowed info with an FST index")]
     disallowed_index: Option<String>,
+    #[clap(short, help="Remove documents that contain any of these list of secrets")]
+    secrets_list: Option<String>,
 }
 
 // Define a document struct
@@ -70,6 +73,17 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     // remove url http and ww prefix
     let url_prefix_re = Arc::new(Regex::new(r"^(https?://)?(www\.)?(.*)$")?);
 
+    let secrets_matcher: Option<_>;
+    if let Some(filename) = args.secrets_list {
+        let file_read = io::BufReader::new(fs::File::open(&filename).expect("Secrets list does not exist"));
+        let patterns: Vec<_> = file_read.lines()
+            .map(|line| line.unwrap())
+            .collect();
+        secrets_matcher = Some(AhoCorasick::new(&patterns)?);
+    } else {
+        secrets_matcher = None;
+    }
+
     // Load model and create atomic references
     // so only one model is loaded, then shared with each thread
     let (charmodel, wordmodel) = load_models(&modelpath);
@@ -96,7 +110,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         // parse json document
         // add segment level langid
         let docs: Vec<_> = batch.par_iter()
-            .map(|line: &String| {
+            .filter_map(|line: &String| {
                 // each thread will create the mutable part of the identifier
                 // and share with the main thread the language model, which is immutable
                 let mut detector = Identifier::new(
@@ -105,6 +119,13 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                 );
                 let mut doc: Document = serde_json::from_str(line.as_str())
                     .expect("Error parsing JSON document");
+
+                // Documents that contain secrets are discarded
+                if let Some(matcher) = &secrets_matcher {
+                    if matcher.is_match(&doc.text) {
+                        return None;
+                    }
+                }
 
                 // identify each segment (splitting by endlines) in the document text
                 // add the predictions to seg_langs array in the json
@@ -138,7 +159,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                     }
                 }
 
-                doc
+                Some(doc)
             }).collect();
 
         // serialize modified documents and print them to stdout

@@ -9,6 +9,9 @@ RUN apt-get install -y htop curl parallel git zstd gzip \
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain=1.77.2
 ENV PATH="/root/.cargo/bin:${PATH}"
 
+RUN curl -Lo /trufflehog.tgz https://github.com/trufflesecurity/trufflehog/releases/download/v3.88.28/trufflehog_3.88.28_linux_amd64.tar.gz
+RUN tar xvf /trufflehog.tgz -C /usr/bin trufflehog
+
 RUN git clone --recursive https://github.com/bitextor/warc2text /opt/warc2text \
     && mkdir /opt/warc2text/build \
     && cd /opt/warc2text/build \
