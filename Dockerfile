@@ -6,7 +6,7 @@ RUN apt-get install -y htop curl parallel git zstd gzip \
     build-essential cmake libuchardet-dev libzip-dev \
     libboost-thread-dev libboost-regex-dev libboost-filesystem-dev \
     libboost-log-dev libboost-iostreams-dev libboost-locale-dev libboost-program-options-dev
-RUN curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain=1.77.2
+RUN curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain=1.86.0
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 RUN curl -Lo /trufflehog.tgz https://github.com/trufflesecurity/trufflehog/releases/download/v3.88.28/trufflehog_3.88.28_linux_amd64.tar.gz
