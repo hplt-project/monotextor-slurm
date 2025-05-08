@@ -1,6 +1,6 @@
 use std::sync::mpsc::sync_channel;
 use std::io::BufRead;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::io;
 use std::fs;
@@ -9,6 +9,7 @@ use aho_corasick::AhoCorasick;
 use fst::Set;
 use serde::{Deserialize, Serialize};
 use itertools::Itertools;
+use log::info;
 use rayon::prelude::*;
 use env_logger::Env;
 use memmap2::Mmap;
@@ -54,6 +55,7 @@ struct Document {
 
 fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+    info!("Started");
     let args = Args::parse();
     let modelpath = if let Some(modelpath) = args.modelpath {
         modelpath
@@ -94,6 +96,10 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let stdin = io::stdin();
     let (sender, receiver) = sync_channel(1);
 
+    let mut num_kept = 0_usize;
+    let num_read = Arc::new(Mutex::new(0_usize));
+    let counter = Arc::clone(&num_read);
+
     // do the stdin read and batching in a separated thread
     let read_thread = thread::spawn(move || {
         // Read from stdin in batches and process them
@@ -101,6 +107,8 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
             let batch: Vec<String> = batch_result
                 .map(|line| line.expect("Error decoding line"))
                 .collect();
+            let mut count = counter.lock().unwrap();
+            *count += batch.len();
             sender.send(batch).unwrap();
         }
     });
@@ -164,10 +172,16 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
         // serialize modified documents and print them to stdout
         for doc in docs {
+            num_kept += 1;
             println!("{}", serde_json::to_string(&doc).unwrap());
         }
     }
 
     read_thread.join().unwrap();
+    let num_read_final = *num_read.lock().unwrap();
+    info!("{} documents read", num_read_final);
+    let removed = num_read_final - num_kept;
+    info!("{} documents removed ({:.2} %)", removed, removed as f32 / (num_read_final as f32) *100.0);
+    info!("Finished");
     Ok(())
 }
