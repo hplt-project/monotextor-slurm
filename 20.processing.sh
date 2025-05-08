@@ -38,7 +38,7 @@ hq alloc add slurm --name processing \
     --idle-timeout $idle_timeout --time-limit 72h \
     -- -p small -A $SBATCH_ACCOUNT \
     --cpus-per-task 128 --ntasks 1 --mem-per-cpu 1750 \
-    -o "$SLURM_LOGS_DIR/hq-worker-%x.out" -e "$SLURM_LOGS_DIR/hq-worker-%x.err"
+    -o "$SLURM_LOGS_DIR/hq-worker-%x.log"
 # obtain the allocation queue id
 qid=$(hq alloc list --output-mode json | jq -cr ".[] | select(.name == \"processing\") | .id" | head -1)
 

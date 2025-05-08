@@ -52,7 +52,7 @@ newqueue() {
         --idle-timeout $IDLE_TIMEOUT --time-limit 72h \
         -- -p small -A $SBATCH_ACCOUNT \
         --cpus-per-task 128 --ntasks 1 --mem-per-cpu $mem \
-        -o "$SLURM_LOGS_DIR/hq-worker-%x.out" -e "$SLURM_LOGS_DIR/hq-worker-%x.err"
+        -o "$SLURM_LOGS_DIR/hq-worker-%x.log"
 }
 queueid() {
     hq alloc list --output-mode json | jq -cr ".[] | select(.name == \"$1\") | .id" | head -1
