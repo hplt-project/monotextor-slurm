@@ -14,7 +14,7 @@ mkdir -p $OUTPUT_DIR
 compress-batch(){
     local file=$1
     # Remove 0s prefix
-    local name=$(echo $file | sed -E "s/\_0+/_/g")
+    local name=$(echo $file | sed -E "s#/0+#/#g")
 
     # compress stdin, write to a temp
     zstdmt -10 >$name.jsonl.zst.tmp
@@ -31,8 +31,9 @@ process-file() {
     local input_dir=$1
     local output_dir=$2
     local batch=`basename $3`
-    zstdcat $input_dir/$batch | clean | zstdmt -10 >$output_dir/$batch.tmp
-    mv $output_dir/$batch.tmp $output_dir/$batch
+    local batch_out=`basename $3 | sed 's/batch_//'`
+    zstdcat $input_dir/$batch | clean | zstdmt -10 >$output_dir/$batch_out.tmp
+    mv $output_dir/$batch_out.tmp $output_dir/$batch_out
 }
 export -f process-file
 
@@ -46,5 +47,5 @@ else
     | split - \
         --numeric-suffixes=1 -a 8 -C 120G \
         --filter='compress-batch $FILE' \
-        $OUTPUT_DIR/batch_
+        $OUTPUT_DIR/
 fi
