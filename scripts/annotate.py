@@ -20,7 +20,7 @@ realpath = os.path.dirname(os.path.realpath(__file__))
 parser = ArgumentParser()
 parser.add_argument('lang', help='Target language')
 parser.add_argument('-a','--all', action='store_true', help="Use all filters")
-parser.add_argument('-e','--explicit', action='store_true', help="Remove explicit content with UT1 adult list")
+parser.add_argument('-e','--explicit', type=str, help="Remove explicit content with domain adult content list")
 parser.add_argument('-E','--extended_explicit', action='store_true', help="Extended explicit url block looking for banned patterns")
 parser.add_argument('-w','--avg_words', action='store_true', help="Remove docs that do not meet the minimum word average per segment")
 parser.add_argument('-m','--minimum', action='store_true', help="Remove docs that do not meet the minimum size")
@@ -30,8 +30,8 @@ parser.add_argument('-z','--cjk', action='store_true', help="Process CJK languag
 
 args = parser.parse_args()
 if args.all:
-    args.explicit = True
     args.avg_words = True
+    args.extended_explicit = True
     args.minimum = True
     args.language = True
 
@@ -86,7 +86,7 @@ def file_iterator(filename):
             yield line.strip()
 adult_doms = None
 if args.explicit:
-    adult_doms = Trie(file_iterator('./blocklists/adult_domains'))
+    adult_doms = Trie(file_iterator(args.explicit))
 
 # Load robotstxt disallowed
 if args.robots:

@@ -25,7 +25,7 @@ singularity exec --bind $WORKSPACE/robotstxt monotextor.sif \
 singularity exec --bind $(pwd -P) --pwd $(pwd -P) monotextor.sif \
 parallel --pipe -k \
     --halt now,fail=1 \
-    -j200 --block 20M python scripts/annotate.py -a $L \
+    -j200 --block 20M python scripts/annotate.py -a $L -e blocklists/adult_domains \
 | zstdmt -T64 -10 \
 > $OUTPUT.tmp \
 || {
