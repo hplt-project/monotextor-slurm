@@ -1,18 +1,14 @@
 from argparse import ArgumentParser
-from collections import Counter
 import contextlib
-import random
 import sys
 import re
 import os
-import io
 
 from bifixer import restorative_cleaning
 from xxhash import xxh128_hexdigest
 from pii_manager import PiiEnum
 from pii_manager.api import PiiManager
 from pii_manager.lang import COUNTRY_ANY
-from unicodedata import category as cat
 from docscorer import DocumentScorer
 from marisa_trie import Trie
 from iso639 import Lang
@@ -112,9 +108,7 @@ def is_adult(url, extended=False):
 
 def filter_doc(args, doc):
     text = doc['text']
-
     segs = text.split('\n')
-    n_segs = len(segs)
 
     # Average and median words per segment
     if args.cjk:
@@ -125,11 +119,12 @@ def filter_doc(args, doc):
 
     # LM scores and langid means
     # split lang by underscore to discard possible script suffix
-    if 'seg_langs' in doc and doc['seg_langs']:
-        avg_correct_lang = sum(1 for l in doc['seg_langs'] if l.split('_')[0] == doc['lang'][0]) / n_segs
-    else:
-        # If there is no langs field and correct lang is requested, please crash
-        avg_correct_lang = None
+    # n_segs = len(segs)
+    # if 'seg_langs' in doc and doc['seg_langs']:
+    #     avg_correct_lang = sum(1 for l in doc['seg_langs'] if l.split('_')[0] == doc['lang'][0]) / n_segs
+    # else:
+    #     # If there is no langs field and correct lang is requested, please crash
+    #     avg_correct_lang = None
 
     # Filter criteria
     if args.explicit and is_adult(doc['u'], args.extended_explicit):
