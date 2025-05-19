@@ -54,7 +54,7 @@ export -f extracturls
 export -f extractrobots
 export -f robotsfilterbatch
 
-batches=`find $INPUT_DIR* -maxdepth 1 -mindepth 1 -type d`
+batches=`find -L $INPUT_DIR* -maxdepth 1 -mindepth 1 -type d`
 
 # Extract robots.txt from WARCs
 binddirs=`echo $INPUT_DIR* | tr ' ' ','`,$OUTPUT_DIR,$(pwd -P)
