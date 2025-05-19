@@ -67,6 +67,7 @@ parallel -j$((SLURM_CPUS_ON_NODE/2)) --halt now,fail=1 \
     extracturls {} $OUTPUT_DIR/{\#} ::: $batches
 
 # Concat all urls and sort them
+mkdir -p $WORKSPACE/tmp
 LC_ALL=C sort -m -u \
     -T $WORKSPACE/tmp \
     -S 80% --parallel=$SLURM_CPUS_ON_NODE \
@@ -78,7 +79,7 @@ LC_ALL=C sort -m -u \
 singularity exec --bind $OUTPUT_DIR monotextor.sif \
     fst set --force --sorted $OUTPUT_DIR/urls.sorted.txt $OUTPUT_DIR/urls.fst
 
- Query with robotstxt extracted patterns the urls index and extract disallowed urls
+# Query with robotstxt extracted patterns the urls index and extract disallowed urls
 binddirs=$OUTPUT_DIR,$(pwd -P)
 singularity exec --bind $binddirs --pwd $(pwd -P) --env RAYON_NUM_THREADS=8 monotextor.sif \
     robots-filter $OUTPUT_DIR/urls.fst $OUTPUT_DIR/*/robotstxt.tsv \
@@ -99,5 +100,6 @@ singularity exec --bind $OUTPUT_DIR monotextor.sif \
 
 zstdmt -qf --rm $OUTPUT_DIR/disallowed-urls
 mv $OUTPUT_DIR/disallowed-urls.fst.tmp $OUTPUT_DIR/disallowed-urls.fst
+echo "Finished" >&2
 
 #TODO cleanup
