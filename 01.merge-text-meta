@@ -29,4 +29,4 @@ binddirs=`echo $INPUT_DIR* | tr ' ' ','`,$OUTPUT_DIR,$(pwd -P)
 $PROFILER \
 singularity exec --bind $binddirs --pwd $(pwd -P) monotextor.sif \
 parallel -j$SLURM_CPUS_ON_NODE --will-cite --halt now,fail=1 \
-    run-merge $COLL {} {\#} ::: `find $INPUT_DIR* -maxdepth 1 -mindepth 1 -type d`
+    run-merge $COLL {} {\#} ::: `find -L $INPUT_DIR* -maxdepth 1 -mindepth 1 -type d`
