@@ -46,7 +46,7 @@ isolang = Lang(args.lang.split('_')[0])
 url_prefix_re = regex.compile("^(https?:\/\/)?(www\.)?(.+)", regex.I)
 extract_domain = regex.compile("^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/\n]+)(.*)", regex.I)
 remove_subdomain = re.compile(".*?\.")
-scorer = DocumentScorer(args.lang)
+scorer = DocumentScorer()
 
 # Load monofixer replacements
 # if no pt1 it doesn't matter, monofixer does not support languages without pt1
@@ -84,7 +84,9 @@ def file_iterator(filename):
     with open(filename, 'rt') as f:
         for line in f:
             yield line.strip()
-adult_doms = Trie(file_iterator('./blocklists/adult_domains'))
+adult_doms = None
+if args.explicit:
+    adult_doms = Trie(file_iterator('./blocklists/adult_domains'))
 
 # Load robotstxt disallowed
 if args.robots:
@@ -178,9 +180,13 @@ for line in sys.stdin:
     if args.robots:
         doc["robots"] = robots_filter(doc["u"])
     doc["doc_scores"] = scorer.score_text(
+            ref_lang=doc["lang"][0],
             lang_segments=doc["seg_langs"],
             scores_lang=[1.0]*len(doc["seg_langs"]), #TODO hack, should remove this
-            document=doc["text"],
+            document_text=doc["text"],
+            id=doc["id"],
+            script_sys=doc["lang"][0].split("_")[1],
+            raw_score=False,
             )
 
     print(orjson.dumps(doc, option=orjson.OPT_SERIALIZE_NUMPY).decode('utf-8'))
