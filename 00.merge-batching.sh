@@ -15,13 +15,13 @@ count=$(echo $batches | wc -w)
 echo Num batches $count
 
 jobid=$(\
-SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x.out" \
-sbatch -J $COLL-merge-text-meta --parsable 01.merge-text-meta $COLL)
+SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x.log" \
+sbatch -J merge-text-meta-$COLL --parsable 01.merge-text-meta $COLL)
 echo Submitted batch job $jobid
 
 jobid=$(\
-SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x.out" \
-sbatch -J $COLL-split-lang \
+SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x.log" \
+sbatch -J split-lang-$COLL \
     --parsable -d afterok:$jobid \
     02.split-lang $COLL)
 echo Submitted batch job $jobid
