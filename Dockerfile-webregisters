@@ -1,0 +1,8 @@
+FROM ubuntu:22.04@sha256:67cadaff1dca187079fce41360d5a7eb6f7dcd3745e53c79ad5efd8563118240
+
+RUN apt update -y && \
+    apt install -y parallel python3 python3-pip python-is-python3 python3-venv numactl
+
+RUN pip install uv
+RUN uv pip install --system torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm6.0
+RUN uv pip install --system "transformers==4.52.3" orjson zstandard "numpy<2"
