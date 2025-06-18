@@ -43,10 +43,17 @@ struct Document {
     u: String,
     c: String,
     ts: String,
+    de: String,
     collection: String,
     lang: Vec<String>,
     prob: Vec<f32>,
     text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    xml: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    html_lang: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    cluster_size: Option<usize>,
     seg_langs: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     robotstxt: Option<String>,
