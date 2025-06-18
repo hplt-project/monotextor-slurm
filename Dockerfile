@@ -12,6 +12,10 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 RUN curl -Lo /trufflehog.tgz https://github.com/trufflesecurity/trufflehog/releases/download/v3.88.28/trufflehog_3.88.28_linux_amd64.tar.gz
 RUN tar xvf /trufflehog.tgz -C /usr/bin trufflehog
 
+RUN cargo install \
+    --root /usr/local \
+    fst-bin
+
 RUN git clone --recursive https://github.com/bitextor/warc2text /opt/warc2text \
     && mkdir /opt/warc2text/build \
     && cd /opt/warc2text/build \
@@ -32,10 +36,6 @@ COPY utils /opt/monotextor_utils
 RUN cargo install \
     --root /usr/local \
     --path /opt/monotextor_utils
-
-RUN cargo install \
-    --root /usr/local \
-    fst-bin
 
 # remove all the cargo build cache and rustup
 RUN rm -r /root/.cargo \
