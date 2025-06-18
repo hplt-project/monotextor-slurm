@@ -1,5 +1,6 @@
 use std::io::{BufRead, BufReader};
 use std::fs::File;
+use std::hash::{BuildHasher, Hasher};
 use std::collections::HashMap;
 use zstd::stream::read::Decoder;
 use gaoya::unionfind::UnionFind;
@@ -155,5 +156,40 @@ impl DedupFilter {
             self.num_read_docs += 1;
             self.num_unique += 1;
         }
+    }
+}
+
+// No-op hasher from gaoya
+pub struct NoOpHasher {
+    pub hash: u64
+}
+
+impl Hasher for NoOpHasher {
+
+    #[inline]
+    fn finish(&self) -> u64 {
+        debug_assert!(self.hash > 0);
+        self.hash
+    }
+
+    fn write(&mut self, _bytes: &[u8]) {
+        panic!("Should not have been called");
+    }
+
+    #[inline]
+    fn write_u64(&mut self, h: u64) {
+        // h is the BandKey.hash
+        self.hash = h;
+    }
+}
+
+pub struct NoOpHashBuilder {}
+
+impl BuildHasher for NoOpHashBuilder {
+    type Hasher = NoOpHasher;
+
+    #[inline]
+    fn build_hasher(&self) -> Self::Hasher {
+        NoOpHasher {hash: 0}
     }
 }
