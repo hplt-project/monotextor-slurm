@@ -28,7 +28,7 @@ with zstandard.open(f'{input_dir}/text.zst', 'rt', errors='strict') as text_file
         doc = orjson.loads(line)
         text = orjson.loads(text_file.readline())
         lang = orjson.loads(lang_file.readline())
-        if not lang["lang"] or not text["t"]:
+        if not lang["lang"] or not text["t"] or lang["prob"][0]<=0.5:
             continue # remove empty docs or language
 
         doc["collection"] = collection
