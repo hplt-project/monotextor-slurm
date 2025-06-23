@@ -44,7 +44,7 @@ struct Document {
     c: String,
     ts: String,
     de: String,
-    collection: String,
+    crawl_id: String,
     lang: Vec<String>,
     prob: Vec<f32>,
     text: String,

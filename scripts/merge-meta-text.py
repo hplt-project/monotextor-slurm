@@ -25,7 +25,7 @@ with zstandard.open(f'{input_dir}/text.zst', 'rt', errors='strict') as text_file
         if not lang["lang"] or not text["t"] or lang["prob"][0]<=0.5:
             continue # remove empty docs or language
 
-        doc["collection"] = collection
+        doc["crawl_id"] = collection
         doc.update(lang)
         doc["text"] = text["t"] #insert the text at the end of the json
         if "x" in text:
