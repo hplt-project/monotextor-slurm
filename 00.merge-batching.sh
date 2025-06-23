@@ -14,9 +14,17 @@ batches=$(find -L ${COLLECTIONS[$COLL]}* -maxdepth 1 -mindepth 1 -type d)
 count=$(echo $batches | wc -w)
 echo Num batches $count
 
+case $COLL in
+    wide* | survey3 | archivebot)
+        mem=7200
+    ;;
+    *)
+        mem=1750
+esac
+
 jobid=$(\
 SBATCH_OUTPUT="$SLURM_LOGS_DIR/%x.log" \
-sbatch -J merge-text-meta-$COLL --parsable 01.merge-text-meta $COLL)
+sbatch -J merge-text-meta-$COLL --mem-per-cpu $mem --parsable 01.merge-text-meta $COLL)
 echo Submitted batch job $jobid
 
 jobid=$(\

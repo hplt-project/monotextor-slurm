@@ -14,19 +14,43 @@ INPUT_DIR=${COLLECTIONS[$COLL]}
 export OUTPUT_DIR=$WORKSPACE/merged/$COLL
 mkdir -p $OUTPUT_DIR
 
+# dump to page-cache the robotstxt disallowed fst so processes don't get stuck at the beginning
+# because of many i/o requests
+case $COLL in
+    wide* | survey3 | archivebot)
+        cat $WORKSPACE/robotstxt/$COLL/disallowed-urls.fst >/dev/null
+    ;;
+    *) ;;
+esac
+
 echo Num CPUS $SLURM_CPUS_ON_NODE
 run-merge (){
     local coll=$1
     local dir=$2
     local filenum=$3
-    python scripts/merge-meta-text.py $coll $dir $OUTPUT_DIR/$filenum
+    local fileout=$OUTPUT_DIR/$filenum.docs.zst
+    set -x
+    case $coll in
+        wide* | survey3 | archivebot)
+            echo "Applying robotstxt disallowed filtering" >&2
+            python scripts/merge-meta-text.py $coll $dir \
+            | disallow-filter -d $WORKSPACE/robotstxt/$coll/disallowed-urls.fst \
+            | zstdmt -10 -T8 \
+            >$fileout
+        ;;
+        *)
+            python scripts/merge-meta-text.py $coll $dir \
+            | zstdmt -10 -T8 \
+            >$fileout
+    esac
 }
 export -f run-merge
 
-binddirs=`echo $INPUT_DIR* | tr ' ' ','`,$OUTPUT_DIR,$(pwd -P)
+njobs=$((SLURM_CPUS_ON_NODE/2))
+binddirs=`echo $INPUT_DIR* | tr ' ' ','`,$OUTPUT_DIR,$(pwd -P),$WORKSPACE/robotstxt
 # Run every batch in parallel
 # each batch in the output will be renamed to the job number
 $PROFILER \
 singularity exec --bind $binddirs --pwd $(pwd -P) monotextor.sif \
-parallel -j$SLURM_CPUS_ON_NODE --will-cite --halt now,fail=1 \
+parallel -j$njobs --will-cite --halt now,fail=1 \
     run-merge $COLL {} {\#} ::: `find -L $INPUT_DIR* -maxdepth 1 -mindepth 1 -type d`
