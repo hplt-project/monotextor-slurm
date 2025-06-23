@@ -24,8 +24,7 @@ hq alloc add slurm --name clean \
 # obtain the allocation queue id
 qid=$(hq alloc list --output-mode json | jq -cr ".[] | select(.name == \"clean\") | .id" | head -1)
 
-trap "hq alloc remove --force $qid" INT
-trap "hq job cancel all" INT
+trap "hq job cancel all; hq alloc remove --force $qid" INT
 
 set +e # remove strict mode, so if job fails, script does not finish and the queue can be closed afterwards
 hq submit --each-line $entries \
