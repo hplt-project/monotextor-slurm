@@ -34,6 +34,7 @@ RUN uv pip install --system -r /opt/reqs.txt \
 
 COPY utils /opt/monotextor_utils
 RUN cargo install \
+    --locked \
     --root /usr/local \
     --path /opt/monotextor_utils
 
