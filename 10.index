@@ -13,21 +13,29 @@ shopt -s failglob
 source .env
 
 IFS=" " read -ra args <<< $HQ_ENTRY
-#L=${args[0]}
-#COLL=${args[1]}
+LANG=${args[0]}
+COLL=${args[1]}
+INPUT_DIR=$WORKSPACE/batches
 TMPSFX=tmp_$$
-INPUT_DIR=${args[0]}
-JSON_FILES=`ls -1 $INPUT_DIR/batch_*.jsonl.zst`
+if [ "$COLL" == "global" ]; then
+    JSON_FILES=`ls -1 $INPUT_DIR/*/$LANG/batch_*.jsonl.zst`
+else
+    JSON_FILES=`ls -1 $INPUT_DIR/$COLL/$LANG/batch_*.jsonl.zst`
+fi
+
+# Log which files are processed files
 echo $JSON_FILES >&2
 
+CLUSTER_DIR=$WORKSPACE/clusters
+mkdir -p $CLUSTER_DIR
 # If it's an array job, do distributed index
-if [[ ${#args[@]} -eq 2 ]]; then
-    band=${args[1]}
+if [[ ${#args[@]} -eq 3 ]]; then
+    band=${args[2]}
     PARAMS="-b $((band-1))"
-    OUTPUT_FILE=$INPUT_DIR/clusters.${args[1]}.zst
+    OUTPUT_FILE=$CLUSTER_DIR/clusters.$LANG.$COLL.$band.zst
 else
     PARAMS=""
-    OUTPUT_FILE=$INPUT_DIR/clusters.zst
+    OUTPUT_FILE=$CLUSTER_DIR/clusters.$LANG.$COLL.zst
 fi
 
 if test -s $OUTPUT_FILE; then
@@ -52,4 +60,6 @@ singularity exec --bind $(pwd -P) --bind $INPUT_DIR --pwd $(pwd -P) monotextor.s
     exit 1
 }
 
+sync
+stat $OUTPUT_FILE.$TMPSFX
 mv $OUTPUT_FILE.$TMPSFX $OUTPUT_FILE
