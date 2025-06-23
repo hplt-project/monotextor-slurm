@@ -7,6 +7,7 @@ RUN apt-get install -y htop curl parallel git zstd gzip \
     libboost-thread-dev libboost-regex-dev libboost-filesystem-dev \
     libboost-log-dev libboost-iostreams-dev libboost-locale-dev libboost-program-options-dev
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain=1.86.0
+RUN pip install uv
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 RUN curl -Lo /trufflehog.tgz https://github.com/trufflesecurity/trufflehog/releases/download/v3.88.28/trufflehog_3.88.28_linux_amd64.tar.gz
@@ -16,7 +17,7 @@ RUN cargo install \
     --root /usr/local \
     fst-bin
 
-RUN git clone --recursive https://github.com/bitextor/warc2text /opt/warc2text \
+RUN git clone --jobs 8 --recursive https://github.com/bitextor/warc2text /opt/warc2text \
     && mkdir /opt/warc2text/build \
     && cd /opt/warc2text/build \
     && cmake .. \
@@ -24,11 +25,10 @@ RUN git clone --recursive https://github.com/bitextor/warc2text /opt/warc2text \
     && ln -s /opt/warc2text/build/bin/warc2text /usr/local/bin/warc2text
 
 COPY requirements.txt /opt/reqs.txt
-RUN pip install -U pip \
-    && pip install -r /opt/reqs.txt \
-    && git clone -b openlid193 https://github.com/zjaume/heli-otr.git \
+RUN uv pip install --system -r /opt/reqs.txt \
+    && git clone -b openlidv2 https://github.com/zjaume/heli-otr.git \
     && cd heli-otr \
-    && pip install . \
+    && uv pip install --system . \
     && heli-convert \
     && rm -fr /heli-otr
 
