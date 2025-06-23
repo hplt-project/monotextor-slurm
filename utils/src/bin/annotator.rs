@@ -69,8 +69,6 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     } else {
         pythonpath().expect("Could loading heli_otr path, please install it as python module or provide a modelpath.")
     };
-    // compile langcode fix regex
-    let codefix = Regex::new(r"(\w+_)(\w)(\w+)").unwrap();
 
     let index_main: Option<_>;
     if let Some(filename) = args.disallowed_index {
@@ -146,15 +144,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                 // add the predictions to seg_langs array in the json
                 let _ = doc.seg_langs.insert(Vec::new());
                 for line in doc.text.lines() {
-                    let mut pred = detector.identify(&line).0.to_string();
-                    // Uppercase the first letter of the script suffix in the langcode
-                    pred = codefix.replace(&pred, |captures: &regex::Captures| {
-                        let mut ser = String::new();
-                        ser.push_str(&captures[1]);
-                        ser.push_str(&captures[2].to_uppercase());
-                        ser.push_str(&captures[3]);
-                        ser
-                    }).to_string();
+                    let pred = detector.identify(&line).0.to_string();
                     doc.seg_langs.as_mut().unwrap().push(pred);
                 }
 
