@@ -5,22 +5,33 @@ set -euo pipefail
 
 IFS=" " read -ra args <<< $HQ_ENTRY
 L=${args[0]}
-COLL=${args[1]}
-batch=${args[2]}
-INPUT=$WORKSPACE/dedup/$COLL/$L/$batch
-out_dir=$WORKSPACE/annotated/$COLL/$L
+batch=${args[1]}
+INPUT=$WORKSPACE/collections_merged/$L/$batch
+out_dir=$WORKSPACE/annotated/$L
 OUTPUT=$out_dir/$batch
-mkdir -p $out_dir
 
-echo running $L $COLL $batch
+echo running $L $batch
+
+# Extract secrets found by trufflehog
+secrets_list=$WORKSPACE/trufflehog_secrets/secrets.$L-$batch.txt
+mkdir -p $(dirname $secrets_list)
+mkdir -p $out_dir
+#trap EXIT "rm $secrets_list"
+/usr/bin/time -v \
+singularity exec --bind $(dirname $INPUT) monotextor.sif \
+    trufflehog filesystem $INPUT --json --no-update \
+| jq -r ".Raw" \
+| awk 'length($0)>10' \
+| LC_ALL=C sort -u --parallel=64 -S 50% \
+>$secrets_list
 
 # Run annotation parallel loop
 # singularity container will run gnu parallel to avoid many containers being launched
 # container needs the current dir to be mounted
 zstdcat $INPUT \
 | /usr/bin/time -v \
-singularity exec --bind $WORKSPACE/robotstxt monotextor.sif \
-    annotator -d $WORKSPACE/robotstxt/$COLL/disallowed-urls.fst \
+singularity exec --bind $FLASH_TMP -B $(dirname $secrets_list) monotextor.sif \
+    annotator -s $secrets_list \
 | /usr/bin/time -v \
 singularity exec --bind $(pwd -P) --pwd $(pwd -P) monotextor.sif \
 parallel --pipe -k \
