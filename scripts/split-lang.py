@@ -101,6 +101,8 @@ for infile in input_files:
             # move document to its lang dir
             lang_files[lang].write(line)
 
+    os.remove(infile)
+
 # close all files
 for f in lang_files.values():
     f.close()
