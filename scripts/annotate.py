@@ -50,7 +50,11 @@ scorer = DocumentScorer()
 
 # Load monofixer replacements
 # if no pt1 it doesn't matter, monofixer does not support languages without pt1
-monofixer_lang = isolang.pt1 if isolang.pt1 else 'any'
+monofixer_lang = 'any'
+if args.lang.split('_')[1] in ('Hans' or 'Hant'):
+    monofixer_lang = 'zh'
+elif isolang.pt1:
+    monofixer_lang = isolang.pt1
 chars_lang, charsRe_lang = restorative_cleaning.getCharsReplacements(monofixer_lang)
 
 @contextlib.contextmanager
@@ -157,6 +161,9 @@ def pii_multi(text):
 def monofixer(text):
     fixed_text = []
     for segment in text.split('\n'):
+        if len(segment) >= 50000:
+            fixed_text.append(segment)
+            continue
         fixed_seg = restorative_cleaning.fix(segment, monofixer_lang, chars_lang, charsRe_lang)
         fixed_seg = restorative_cleaning.remove_html_tags(fixed_seg)
         fixed_text.append(fixed_seg)
@@ -171,6 +178,33 @@ def robots_filter(url):
     else:
         return "allow"
 
+# Convert certain langcodes to a form that WDS supports
+# because WDS may have the macro or the individual and openlidv2 otherwise
+# so we try to match 'hplt_canonical_label' in
+# https://huggingface.co/datasets/laurievb/OpenLID-v2/blob/cc7b18c/hplt/hplt_200_lang_labels.jsonl
+# to language_3_chars here
+# https://github.com/pablop16n/web-docs-scorer/blob/37a3f3421cc7495b9d7cb5bdd2ba36dad7e7db5d/src/docscorer/configurations/language_adaption/medians_language.csv
+# if languages are not present in that csv, WDS will use standard generic values
+# this function assumes input is a code from hplt_canonical_labels
+def get_lang_wds(langcode_script):
+    langcode, script = langcode_script.split('_')
+    if langcode == 'cmn':
+        # openlidv2 uses individual code for mandarin
+        return f'zho_{script}'
+    if langcode_script == 'zsm_Latn':
+        # wds only has 'ind' and 'msa'
+        return 'msa_Latn'
+    if langcode_script == 'swa_Latn':
+        # wds has swahili individual
+        return 'swh_Latn'
+    if langcode_script == 'ara_Arab':
+        # wds uses individual
+        return 'arb_Arab'
+    if langcode in ('lvs', 'ltg'):
+        return 'lav_Latn'
+
+    return langcode_script
+
 for line in sys.stdin:
     doc = orjson.loads(line)
     doc["id"] = xxh128_hexdigest(doc["f"] + doc["u"] + doc["ts"])
@@ -180,7 +214,7 @@ for line in sys.stdin:
     if args.robots:
         doc["robots"] = robots_filter(doc["u"])
     doc["doc_scores"] = scorer.score_text(
-            ref_lang=doc["lang"][0],
+            ref_lang=get_lang_wds(args.lang), # we use args.lang because it has been converted to hplt codes
             lang_segments=doc["seg_langs"],
             scores_lang=[1.0]*len(doc["seg_langs"]), #TODO hack, should remove this
             document_text=doc["text"],
@@ -189,4 +223,4 @@ for line in sys.stdin:
             raw_score=False,
             )
 
-    print(orjson.dumps(doc, option=orjson.OPT_SERIALIZE_NUMPY).decode('utf-8'))
+    sys.stdout.buffer.write(orjson.dumps(doc, option=orjson.OPT_SERIALIZE_NUMPY | orjson.OPT_APPEND_NEWLINE))
