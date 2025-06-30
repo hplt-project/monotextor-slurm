@@ -12,6 +12,11 @@ OUTPUT=$out_dir/$batch
 
 echo running $L $batch
 
+if test -s $OUTPUT; then
+    echo Annotated file already exists, exiting... $OUTPUT >&2
+    exit 0
+fi
+
 # Extract secrets found by trufflehog
 secrets_list=$WORKSPACE/trufflehog_secrets/secrets.$L-$batch.txt
 mkdir -p $(dirname $secrets_list)
