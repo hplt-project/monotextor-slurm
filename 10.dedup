@@ -64,6 +64,6 @@ else
     $sing dedup -c <(cat $CLUSTER_FILES) $JSON_FILES
     #rm $CLUSTER_FILES
 fi | split - \
-    --numeric-suffixes=1 -a 8 -C 40G \
+    --numeric-suffixes=1 -a 8 -C 20G \
     --filter='compress-batch $FILE' \
     $OUTPUT_DIR/batch_
