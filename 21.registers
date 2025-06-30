@@ -1,0 +1,43 @@
+#!/bin/bash
+source .env
+source .checks
+set -euo pipefail
+
+IFS=" " read -ra args <<< $HQ_ENTRY
+L=${args[0]}
+batch=${args[1]}
+INPUT=$WORKSPACE/annotated/$L/$batch
+out_dir=$WORKSPACE/registers/$L
+OUTPUT=$out_dir/$batch
+mkdir -p $out_dir
+
+echo running $L $batch
+
+module load parallel
+
+runbind() {
+    slot=$1
+    slot=$((slot-1))
+    binding=(3 3 1 1 0 0 2 2)
+    echo Running slot $slot numa node ${binding[$slot]} >&2
+
+    TRANSFORMERS_OFFLINE=1 \
+    ROCR_VISIBLE_DEVICES=$slot \
+    numactl -a -N ${binding[$slot]} \
+    singularity exec \
+        -B $(pwd -P) --pwd $(pwd -P) \
+        monotextor-registers.sif \
+        python scripts/web-registers.py -b 2048 -B 20000
+}
+export -f runbind
+
+/usr/bin/time -v \
+zstdcat $INPUT \
+| parallel --pipe -j8 --round --halt now,fail=1 runbind {%} \
+| zstdmt -T32 -10 >$OUTPUT.tmp \
+|| {
+    echo "Error in pipeline: ${PIPESTATUS[@]}" >&2
+    exit 1
+}
+
+mv $OUTPUT.tmp $OUTPUT
