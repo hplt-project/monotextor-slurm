@@ -31,6 +31,7 @@ print_task() {
 # Create the task list
 # sort them by size to start with the biggest
 mkdir -p $WORKSPACE/tasks_list
+mkdir -p $SLURM_LOGS_DIR/workers
 index_entries=$WORKSPACE/tasks_list/10.index
 dedup_entries=$WORKSPACE/tasks_list/10.dedup
 merge_entries=$WORKSPACE/tasks_list/11.merge-collections
@@ -74,7 +75,7 @@ newqueue() {
         --idle-timeout $IDLE_TIMEOUT --time-limit 24h \
         -- -p small -A $SBATCH_ACCOUNT \
         --cpus-per-task 128 --ntasks 1 --mem-per-cpu $mem \
-        -o "$SLURM_LOGS_DIR/hq-worker-%x.log"
+        -o "$SLURM_LOGS_DIR/workers/hq-worker-%x.log"
 }
 queueid() {
     hq alloc list --output-mode json | jq -cr ".[] | select(.name == \"$1\") | .id" | head -1
