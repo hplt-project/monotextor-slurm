@@ -28,6 +28,7 @@ COPY requirements.txt /opt/reqs.txt
 RUN uv pip install --system -r /opt/reqs.txt \
     && git clone -b openlidv2 https://github.com/zjaume/heli-otr.git \
     && cd heli-otr \
+    && git checkout 0988902 \
     && uv pip install --system . \
     && heli-convert \
     && rm -fr /heli-otr
