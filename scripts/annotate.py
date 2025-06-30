@@ -187,6 +187,8 @@ def robots_filter(url):
 # if languages are not present in that csv, WDS will use standard generic values
 # this function assumes input is a code from hplt_canonical_labels
 def get_lang_wds(langcode_script):
+    if langcode_script == 'und':
+        return langcode_script
     langcode, script = langcode_script.split('_')
     if langcode == 'cmn':
         # openlidv2 uses individual code for mandarin
@@ -213,9 +215,10 @@ for line in sys.stdin:
     doc["pii"] = pii_multi(doc["text"])
     if args.robots:
         doc["robots"] = robots_filter(doc["u"])
+    wds_seg_langs = list(map(get_lang_wds, doc["seg_langs"]))
     doc["doc_scores"] = scorer.score_text(
             ref_lang=get_lang_wds(args.lang), # we use args.lang because it has been converted to hplt codes
-            lang_segments=doc["seg_langs"],
+            lang_segments=wds_seg_langs,
             scores_lang=[1.0]*len(doc["seg_langs"]), #TODO hack, should remove this
             document_text=doc["text"],
             id=doc["id"],
