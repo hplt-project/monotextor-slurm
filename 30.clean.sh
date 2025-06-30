@@ -15,12 +15,13 @@ confirm
 
 # Create an allocation queue that will allocate a full node for each worker
 # each worker will process one task
+mkdir -p $SLURM_LOGS_DIR/workers
 hq alloc add slurm --name clean \
     --workers-per-alloc 1 --max-worker-count $WORKERS --backlog $WORKERS \
     --idle-timeout $idle_timeout --time-limit 72h \
     -- -p small -A $SBATCH_ACCOUNT \
     --cpus-per-task 128 --ntasks 1 --mem-per-cpu 1750 \
-    -o "$SLURM_LOGS_DIR/hq-worker-%x.log"
+    -o "$SLURM_LOGS_DIR/workers/hq-worker-%x.log"
 # obtain the allocation queue id
 qid=$(hq alloc list --output-mode json | jq -cr ".[] | select(.name == \"clean\") | .id" | head -1)
 
