@@ -11,46 +11,46 @@ use monotextor_utils::indexer::Indexer;
 
 
 #[derive(Parser)]
-#[clap(version, about="Index a set of documents in JSONL format. \
+#[command(version, about="Index a set of documents in JSONL format. \
                        Then print the cluster array of duplicates.")]
 struct Args{
-    #[clap(long, default_value_t=20000,
+    #[arg(long, default_value_t=20000,
            help="Number of lines to be processed at a time")]
     batch_size: usize,
-    #[clap(long, short, default_value_t=-1,
+    #[arg(long, short, default_value_t=-1,
            help="Band to be indexed. Values from 0 to band_size-1. If none specified, index all.")]
     band_id: isize,
-    #[clap(arg_enum, long, short, default_value="whitespace",
+    #[arg(value_enum, long, short, default_value_t=Tokenization::Whitespace,
            help="Tokenization type.")]
     tokenizer: Tokenization,
-    #[clap(short, long, default_value_t=3,
+    #[arg(short, long, default_value_t=3,
            help="Size of the non-overlapping window for character tokenization.")]
     window_size: usize,
 
-    // #[clap(long, default_value_t=1000,
+    // #[arg(long, default_value_t=1000,
     //     help="Documents with higher number of duplicates than this amount \
     //          will be marked to be directly discarded. \
     //          Not even keeping one of the group as representative.")]
     // num_duplicates_threshold: usize,
-    #[clap(long, short, default_value_t=0.8, help="Jaccard similarity threshold.")]
+    #[arg(long, short, default_value_t=0.8, help="Jaccard similarity threshold.")]
     jaccard_threshold: f64,
-    #[clap(long, short, required=false,
+    #[arg(long, short, required=false,
            help="Number of permutations, a.k.a number of hashes. \
                  If provided, num_bands and band_width will be ignored.")]
     permutations: Option<usize>,
-    #[clap(long, default_value_t=17, help="Number of bands. If provided, permutations will be ignored.")]
+    #[arg(long, default_value_t=17, help="Number of bands. If provided, permutations will be ignored.")]
     num_bands: usize,
-    #[clap(long, default_value_t=15, help="Band width. If provided, permutations will be ignored.")]
+    #[arg(long, default_value_t=15, help="Band width. If provided, permutations will be ignored.")]
     band_width: usize,
-    //#[clap(long, short='c', required=false, takes_value=false,
+    //#[arg(long, short='c', required=false, takes_value=false,
     //       help="Instead of filtering duplicates, print the clusters array and exit.")]
     //print_clusters: bool,
 
-    #[clap(long, short, required=false, takes_value=false,
+    #[arg(long, short, required=false,
            help="Print MinHash parameters and finish.")]
     dry_run: bool,
 
-    #[clap(help="zstd compressed jsonl files to be indexed.")]
+    #[arg(help="zstd compressed jsonl files to be indexed.")]
     files: Vec<String>,
 }
 

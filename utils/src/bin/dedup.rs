@@ -7,20 +7,20 @@ use monotextor_utils::dedup::DedupFilter;
 use monotextor_utils::utils::memory_usage;
 
 #[derive(Parser)]
-#[clap(version, about="Deduplicate a set of JSONL documents using clusters array. \
+#[command(version, about="Deduplicate a set of JSONL documents using clusters array. \
                        Non-duplicates and one document per duplicates cluster will be kept. \
                        Document id's of kept documents will be re-assigned.")]
 struct Args{
-    #[clap(short, long, required=false, takes_value=false,
+    #[arg(short, long, required=false,
            help="Print discarded duplicates, instead of non-discarded.")]
     print_duplicates: bool,
-    #[clap(short = 'c', long, required=false, takes_value=false,
+    #[arg(short = 'c', long, required=false,
            help="Add the size of the cluster to each document metadata")]
     add_cluster_size: bool,
 
-    #[clap(help="File containg the clusters array/s of duplicates.")]
+    #[arg(help="File containg the clusters array/s of duplicates.")]
     clusterfile: String,
-    #[clap(help="zstd compressed jsonl files to be filtered.")]
+    #[arg(help="zstd compressed jsonl files to be filtered.")]
     files: Vec<String>,
 }
 

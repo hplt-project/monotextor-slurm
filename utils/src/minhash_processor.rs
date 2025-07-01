@@ -1,11 +1,11 @@
+use clap::ValueEnum;
 use gaoya::minhash::{MinHasher32, MinHasher};
 use gaoya::text::whitespace_split;
 use fnv::FnvBuildHasher;
 use shingles::Shingles;
-use clap::ArgEnum;
 use seahash;
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum Tokenization {
     Vectorizer,
     Whitespace,

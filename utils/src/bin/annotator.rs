@@ -21,13 +21,13 @@ use heli_otr::{load_models, pythonpath};
 
 
 #[derive(Parser)]
-#[clap(version, about="Annotate JSONL documents with langid and/or robotstxt allowance")]
+#[command(version, about="Annotate JSONL documents with langid and/or robotstxt allowance")]
 struct Args {
-    #[clap(short, help="Path to heli-otr model directory")]
+    #[arg(short, help="Path to heli-otr model directory")]
     modelpath: Option<String>,
-    #[clap(short, help="Add robotstxt disallowed info with an FST index")]
+    #[arg(short, help="Add robotstxt disallowed info with an FST index")]
     disallowed_index: Option<String>,
-    #[clap(short, help="Remove documents that contain any of these list of secrets")]
+    #[arg(short, help="Remove documents that contain any of these list of secrets")]
     secrets_list: Option<String>,
 }
 
