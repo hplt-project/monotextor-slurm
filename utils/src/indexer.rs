@@ -8,11 +8,16 @@ use gaoya::unionfind::UnionFind;
 use gaoya::minhash::{
     MinHashDeduper,
 };
+use serde::{Deserialize, Serialize};
 use zstd::stream::read::Decoder;
 
 use crate::minhash_processor::{Tokenization, MinHashProcessor};
-use crate::DocumentText;
 
+#[derive(Deserialize, Serialize)]
+struct DocumentText {
+    // Parse documents ignoring all fields but "text"
+    pub text: String,
+}
 
 pub struct Indexer
 {
