@@ -26,11 +26,11 @@ use log::{debug, warn};
 
 
 #[derive(Parser)]
-#[clap(version, about="Generate a list of disallowed URLs by robots.txt")]
+#[command(version, about="Generate a list of disallowed URLs by robots.txt")]
 struct Args {
-    #[clap(help="FST indexed URLs to search in")]
+    #[arg(help="FST indexed URLs to search in")]
     indexpath: String,
-    #[clap(help="List of allowance URL patterns from robots.txt")]
+    #[arg(help="List of allowance URL patterns from robots.txt")]
     allowancefiles: Vec<String>,
 }
 

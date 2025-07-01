@@ -16,9 +16,9 @@ use clap::Parser;
 
 
 #[derive(Parser)]
-#[clap(version, about="Annotate JSONL documents with langid and/or robotstxt allowance")]
+#[command(version, about="Annotate JSONL documents with langid and/or robotstxt allowance")]
 struct Args {
-    #[clap(short, help="Add robotstxt disallowed info with an FST index")]
+    #[arg(short, help="Add robotstxt disallowed info with an FST index")]
     disallowed_index: String,
 }
 
