@@ -19,7 +19,7 @@ print_task() {
     fi
     # For languages of more than 150GB run distributed minhash
     # each index is the index of the minhash band to run
-    if (( $size > 150000000 )); then
+    if (( $size > 300000000 )); then
         for i in `seq 1 17`; do
             echo "$lang $coll $i"
         done
@@ -38,7 +38,7 @@ merge_entries=$WORKSPACE/tasks_list/11.merge-collections
 if [ ! -s $index_entries ] || [ ! -s $dedup_entries ] || [ ! -s $merge_entries ];
 then
     temp=$(mktemp); trap "rm $temp" EXIT
-    for lang in `cat langs | grep -v unk`
+    for lang in `cat langs | grep 'eng_Latn\|rus_Cyrl\|cmn_Hans\|jpn_Jpan\|deu_Latn\|spa_Latn\|fra_Latn'`
     do
         if echo $lang | grep -qv "eng_Latn\|rus_Cyrl\|cmn_Hans"
         then
@@ -72,7 +72,7 @@ newqueue() {
     local mem=$3
     hq alloc add slurm --name $name \
         --workers-per-alloc 1 --max-worker-count $workers --backlog $workers \
-        --idle-timeout $IDLE_TIMEOUT --time-limit 24h \
+        --idle-timeout $IDLE_TIMEOUT --time-limit 72h \
         -- -p small -A $SBATCH_ACCOUNT \
         --cpus-per-task 128 --ntasks 1 --mem-per-cpu $mem \
         -o "$SLURM_LOGS_DIR/workers/hq-worker-%x.log"
