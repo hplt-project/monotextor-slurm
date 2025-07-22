@@ -6,7 +6,7 @@ module load parallel
 
 IFS=" " read -ra args <<< $HQ_ENTRY
 L=${args[0]}
-INPUT_DIR=$WORKSPACE/annotated/$L
+INPUT_DIR=$WORKSPACE/registers/$L
 OUTPUT_DIR=$WORKSPACE/cleaned/$L
 mkdir -p $OUTPUT_DIR
 
@@ -42,7 +42,7 @@ export -f process-file
 # For the biggest languages, filter each file individually instead of in serial and re-batching
 #if echo $L | grep -q 'eng_Latn\|rus_Cyrl\|zho_Hans'; then
 if [[ $(ls -1 $INPUT_DIR/batch_*.jsonl.zst | wc -l) -gt 2 ]]; then
-    parallel -j48 process-file $INPUT_DIR $OUTPUT_DIR ::: `ls $INPUT_DIR/batch_*.jsonl.zst`
+    parallel -j80 process-file $INPUT_DIR $OUTPUT_DIR ::: `ls $INPUT_DIR/batch_*.jsonl.zst`
 else
     zstdcat $INPUT_DIR/batch_*.jsonl.zst \
     | parallel -j32 --block 50M --pipe --halt now,fail=1 clean \
