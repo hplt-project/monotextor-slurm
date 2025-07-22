@@ -7,8 +7,8 @@ source .checks
 set -euo pipefail
 
 WORKERS=200
-GPU_WORKERS=200
-GPU_NODES=10 # num nodes per allocation
+GPU_WORKERS=400
+GPU_NODES=2 # num nodes per allocation
 # total allocated nodes is GPU_WORKERS/GPU_NODES
 idle_timeout=30s
 
@@ -67,14 +67,14 @@ hq alloc remove $qid
 # this time allocating GPUs
 hq alloc add slurm --name registers \
     --workers-per-alloc $GPU_NODES --max-worker-count $GPU_WORKERS --backlog $GPU_WORKERS \
-    --idle-timeout $idle_timeout --time-limit 30min \
+    --idle-timeout $idle_timeout --time-limit 48h \
     -- -p standard-g -A $SBATCH_ACCOUNT \
     --nodes $GPU_NODES --ntasks-per-node=1 --gpus-per-task=8 \
     -o "$SLURM_LOGS_DIR/workers/hq-worker-%x.log"
 # obtain the allocation queue id
 qid=$(hq alloc list --output-mode json | jq -cr ".[] | select(.name == \"registers\") | .id" | head -1)
 
-trap "hq job cancel all; hq alloc remove --force $qid" INT
+trap "hq job cancel all; hq alloc remove --force $qid" EXIT
 
 hq submit --each-line $entries \
     --nodes 1 --resource "gpus/amd=8" --progress \
