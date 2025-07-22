@@ -187,9 +187,12 @@ def robots_filter(url):
 # if languages are not present in that csv, WDS will use standard generic values
 # this function assumes input is a code from hplt_canonical_labels
 def get_lang_wds(langcode_script):
-    if langcode_script == 'und':
+    if langcode_script == 'und' or langcode_script == 'unk':
         return langcode_script
-    langcode, script = langcode_script.split('_')
+    try:
+        langcode, script = langcode_script.split('_')
+    except ValueError as e:
+        raise ValueError(f"Could not parse {lancode_script}") from e
     if langcode == 'cmn':
         # openlidv2 uses individual code for mandarin
         return f'zho_{script}'
