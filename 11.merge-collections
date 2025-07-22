@@ -29,7 +29,7 @@ num=0
 for f in $files
 do
     size=`du $f | tail -1 | cut -f1`
-    if [[ $((size+cum_size)) -gt 20000000 ]] || [[ $num -eq 0 ]];
+    if [[ $((size+cum_size)) -gt 10000000 ]] || [[ $num -eq 0 ]];
     then
         num=$((num+1))
         cum_size=0
