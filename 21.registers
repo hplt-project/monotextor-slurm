@@ -13,12 +13,31 @@ mkdir -p $out_dir
 
 echo running $L $batch
 
+if test -s $OUTPUT; then
+    echo Register labels already processed, exiting... $OUTPUT >&2
+    sleep 1s
+    exit 0
+fi
+
+lang_code=${L:0:3}
+langs_supported=(afr als amh ara asm azb azj bel ben bul cat ces ckb cmn cym dan deu ekk ell eng epo \
+    eus fas fil fin fra gaz gla gle glg guj hau hbs heb hin hun hye ind isl ita jav jpn kan kat kaz \
+    khk khm kir kmr kor lao lit lvs mal mar mkd mya nld nno nob npi ory pan pbt plt pol por ron rus san sin \
+    slk slv snd som spa sun swe swh tam tel tha tur uig ukr urd uzn vie xho ydd yue zsm)
+if ! [[ "${langs_supported[*]}" =~ "$lang_code" ]]; then
+    echo Lang $lang_code not supported by registers model, just copying the file >&2
+    cp $INPUT $OUTPUT
+    exit 0
+fi
+
 module load parallel
 
+export ERRORDIR=$(mktemp -d)
 runbind() {
     slot=$1
     slot=$((slot-1))
     binding=(3 3 1 1 0 0 2 2)
+    exec 2>$ERRORDIR/$slot
     echo Running slot $slot numa node ${binding[$slot]} >&2
 
     TRANSFORMERS_OFFLINE=1 \
@@ -27,17 +46,29 @@ runbind() {
     singularity exec \
         -B $(pwd -P) --pwd $(pwd -P) \
         monotextor-registers.sif \
-        python scripts/web-registers.py -b 2048 -B 20000
+        python scripts/web-registers.py -b 1536 -B 20000
 }
 export -f runbind
 
+joblog=$(mktemp)
+parallel_err=$(mktemp)
+
 /usr/bin/time -v \
 zstdcat $INPUT \
-| parallel --pipe -j8 --round --halt now,fail=1 runbind {%} \
+| parallel --joblog $joblog --pipe -j8 --round --halt now,fail=1 runbind {%} \
+2>$parallel_err \
 | zstdmt -T32 -10 >$OUTPUT.tmp \
 || {
     echo "Error in pipeline: ${PIPESTATUS[@]}" >&2
+    echo "#### parallel joblog ####" >&2
+    cat $joblog >&2
+    echo "#### end parallel joblog ####" >&2
+    echo "#### parallel stderr ####" >&2
+    cat $ERRORDIR/* >&2
+    echo "#### end parallel stderr ####" >&2
+    rm -fr $joblog $parallel_err $ERRORDIR
     exit 1
 }
 
+rm -fr $joblog $parallel_err $ERRORDIR
 mv $OUTPUT.tmp $OUTPUT
