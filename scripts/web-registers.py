@@ -84,7 +84,7 @@ class RegisterLabels:
         logging.debug(outputs)
 
         # Apply sigmoid to the logits to get probabilities
-        probabilities = torch.sigmoid(outputs.logits).squeeze()
+        probabilities = torch.sigmoid(outputs.logits)
         logging.debug(probabilities)
 
         # Extract readable labels using id2label
