@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::mpsc::sync_channel;
 use std::io::BufRead;
 use std::sync::{Arc, Mutex};
@@ -57,6 +58,16 @@ struct Document {
     seg_langs: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     robotstxt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pii: Option<Vec<(usize,usize)>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    filter: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    doc_scores: Option<Vec<f32>>,
+    #[serde(rename = "web-register", skip_serializing_if = "Option::is_none")]
+    web_register: Option<HashMap<String, f32>>,
 }
 
 
