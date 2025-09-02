@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::io::{BufRead, BufReader};
 use std::hash::{Hash, Hasher};
 use std::fs::File;
@@ -7,11 +6,12 @@ use std::time::Instant;
 use ahash::AHasher;
 use clap::Parser;
 use env_logger::Env;
-use log::{debug, info};
+use fastbloom::BloomFilter;
+use log::{info};
+use parse_size::parse_size;
 use zstd::stream::read::Decoder;
 
 use monotextor_utils::utils::memory_usage;
-use monotextor_utils::dedup::NoOpHashBuilder;
 use monotextor_utils::DocumentText;
 
 #[derive(Parser)]
@@ -19,6 +19,10 @@ use monotextor_utils::DocumentText;
 struct Args {
     #[clap(help="zstd compressed jsonl files to be filtered.")]
     files: Vec<String>,
+
+    #[clap(long, short, help="Estimated number of elements",
+           value_parser = |s: &str| parse_size(s))]
+    num_elements: u64,
 }
 
 fn calculate_hash<T: Hash>(t: &T) -> u64 {
@@ -29,12 +33,20 @@ fn calculate_hash<T: Hash>(t: &T) -> u64 {
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
-    let now = Instant::now();
     let args = Args::parse();
 
-    info!("Started");
-    let mut index = HashSet::<u64, NoOpHashBuilder>::with_hasher(NoOpHashBuilder{});
+    info!("Initializing BloomFilter");
+    let now = Instant::now();
+    let mut index = BloomFilter::with_false_pos(0.001)
+        .seed(&42)
+        .expected_items(args.num_elements as usize);
+    info!("BloomFilter initialization took {:.2} s", now.elapsed().as_secs_f32());
 
+    info!("Processing");
+    let now = Instant::now();
+
+    let mut num_docs = 0;
+    let mut kept_docs = 0;
     for filename in args.files {
         let file = File::open(&filename)
             .expect(format!("Error opening file '{filename}'").as_str());
@@ -42,21 +54,25 @@ fn main() {
             .expect(format!("Uncompressed or corrupted file '{filename}'").as_str());
         let reader = BufReader::new(decoder);
 
-
         for line_res in reader.lines() {
             let line = line_res.unwrap();
             let doc: DocumentText = serde_json::from_str(&line)
                 .expect("Error parsing JSON document");
+            num_docs += 1;
 
             let hash = calculate_hash(&doc.text);
-            if index.insert(hash) {
+            if !index.insert_hash(hash) {
+                kept_docs += 1;
                 println!("{}", line);
             }
         }
     }
 
     memory_usage();
-    info!("Unique elements: {}", index.len());
-    info!("Elapsed time: {:.2} s", now.elapsed().as_secs_f32());
     info!("Finished");
+    info!("Elapsed time: {:.2} s", now.elapsed().as_secs_f32());
+    info!("Total docs: {}", num_docs);
+    info!("Kept docs: {} ({:.1}%)", kept_docs, kept_docs as f64 / num_docs as f64 * 100.0);
+    info!("Throughput: {:.1} docs/s", num_docs as f32/now.elapsed().as_secs_f32());
+    // info!("Unique elements: {}", index.len());
 }
