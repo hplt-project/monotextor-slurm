@@ -1,7 +1,9 @@
 use std::io::{BufRead, BufReader};
 use std::hash::{Hash, Hasher};
 use std::fs::File;
+use std::sync::mpsc::channel;
 use std::time::Instant;
+use std::thread;
 
 use ahash::AHasher;
 use clap::Parser;
@@ -44,27 +46,34 @@ fn main() {
 
     info!("Processing");
     let now = Instant::now();
+    let (sender, receiver) = channel();
 
     let mut num_docs = 0;
     let mut kept_docs = 0;
-    for filename in args.files {
-        let file = File::open(&filename)
-            .expect(format!("Error opening file '{filename}'").as_str());
-        let decoder = Decoder::new(file)
-            .expect(format!("Uncompressed or corrupted file '{filename}'").as_str());
-        let reader = BufReader::new(decoder);
+    thread::spawn(move || {
+        for filename in args.files {
+            let file = File::open(&filename)
+                .expect(format!("Error opening file '{filename}'").as_str());
+            let decoder = Decoder::new(file)
+                .expect(format!("Uncompressed or corrupted file '{filename}'").as_str());
+            let reader = BufReader::new(decoder);
 
-        for line_res in reader.lines() {
-            let line = line_res.unwrap();
-            let doc: DocumentText = serde_json::from_str(&line)
-                .expect("Error parsing JSON document");
-            num_docs += 1;
-
-            let hash = calculate_hash(&doc.text);
-            if !index.insert_hash(hash) {
-                kept_docs += 1;
-                println!("{}", line);
+            for line_res in reader.lines() {
+                let line = line_res.unwrap();
+                sender.send(line).unwrap();
             }
+        }
+    });
+
+    while let Ok(line) = receiver.recv() {
+        let doc: DocumentText = serde_json::from_str(&line)
+            .expect("Error parsing JSON document");
+        num_docs += 1;
+
+        let hash = calculate_hash(&doc.text);
+        if !index.insert_hash(hash) {
+            kept_docs += 1;
+            println!("{}", line);
         }
     }
 
