@@ -34,13 +34,14 @@ The dedup step is performed the same way, but instead all the vectors are read a
 
 ### Robots.txt compliance
 To comply with `robots.txt` directives by each web domain, this pipeline includes optional annotation of documents that are not allowed to be crawled.
-To do this, the WARCs containing the `robots.txt` files for each collection, have to be provided in the same input directory structure described in [Merge-batching step](#merge-batching).
-Afterwards, the `robots.txt` processing can be executed in parallel to the main pipeline and will generate a list of disallowed urls for each collection, that will be used by the annotation step.
+To do this, the WARCs containing the `robots.txt` files for each crawl, have to be provided in the same input directory structure described in [Merge-batching step](#merge-batching).
+Afterwards, the `robots.txt` processing can be executed in parallel to the main pipeline and will generate a list of disallowed urls for each crawl, that will be used by the merge-batching step to remove documents.
 The procedure does the following, in one job per collection:
  - Extract all the urls for that collection and create a compressed index with [FST](https://crates.io/crates/fst).
  - Exctract all the documents in JSONL format containing `robots.txt` files from the WARCs.
  - Parse the `robots.txt` files and produce a list allowed and disallowed url patterns for our relevant user agents (`*`, `ia-archiver`, `CCBot`).
  - Use the patterns to query the urls index and generate a list of disallowed patterns.
+ - Every document that has a URL matching a disallowed URL pattern within a crawl is removed.
 
 ### Annotation
 The annotation step consists of adding multiple metadata fields to each document (using [annotate.py](scripts/annotate.py)):
