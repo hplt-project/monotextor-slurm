@@ -39,8 +39,7 @@ Afterwards, the `robots.txt` processing can be executed in parallel to the main 
 The procedure does the following, in one job per collection:
  - Extract all the urls for that collection and create a compressed index with [FST](https://crates.io/crates/fst).
  - Exctract all the documents in JSONL format containing `robots.txt` files from the WARCs.
- - Parse the `robots.txt` files and produce a list allowed and disallowed url patterns for our relevant user agents (`*`, `ia-archiver`, `CCBot`).
- - Use the patterns to query the urls index and generate a list of disallowed patterns.
+ - Parse the `robots.txt` files and produce a list of disallowed url patterns for our relevant user agents (`*`, `ia-archiver`, `CCBot`). Each disallowed URL pattern that is inside a block of any of our relevant user-agents will be included in the list.
  - Every document that has a URL matching a disallowed URL pattern within a crawl is removed.
 
 ### Annotation
