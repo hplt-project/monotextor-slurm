@@ -1,14 +1,14 @@
-use std::io::{BufRead, BufReader};
+use std::io::{Write, BufWriter, stdout, BufRead, BufReader};
 use std::hash::{Hash, Hasher};
 use std::fs::File;
-use std::sync::mpsc::channel;
+use std::sync::mpsc::sync_channel;
 use std::time::Instant;
 use std::thread;
 
 use ahash::AHasher;
 use clap::Parser;
 use env_logger::Env;
-use fastbloom::BloomFilter;
+use fastbloom_rs::{Membership, FilterBuilder};
 use log::{info};
 use parse_size::parse_size;
 use zstd::stream::read::Decoder;
@@ -39,14 +39,17 @@ fn main() {
 
     info!("Initializing BloomFilter");
     let now = Instant::now();
-    let mut index = BloomFilter::with_false_pos(0.001)
-        .seed(&42)
-        .expected_items(args.num_elements as usize);
+    // let mut index = BloomFilter::with_false_pos(0.001)
+    //     .seed(&42)
+    //     .expected_items(args.num_elements as usize);
+    let mut index = FilterBuilder::new(args.num_elements, 0.001)
+        .build_bloom_filter();
     info!("BloomFilter initialization took {:.2} s", now.elapsed().as_secs_f32());
 
     info!("Processing");
     let now = Instant::now();
-    let (sender, receiver) = channel();
+    let (sender, receiver) = sync_channel(100000);
+    let mut writer = BufWriter::with_capacity(100_000, stdout().lock());
 
     let mut num_docs = 0;
     let mut kept_docs = 0;
@@ -58,7 +61,7 @@ fn main() {
                 .expect(format!("Uncompressed or corrupted file '{filename}'").as_str());
             let reader = BufReader::new(decoder);
 
-            for line_res in reader.lines() {
+            for line_res in reader.split(b'\n') {
                 let line = line_res.unwrap();
                 sender.send(line).unwrap();
             }
@@ -66,14 +69,21 @@ fn main() {
     });
 
     while let Ok(line) = receiver.recv() {
-        let doc: DocumentText = serde_json::from_str(&line)
+        let doc: DocumentText = serde_json::from_slice(&line)
             .expect("Error parsing JSON document");
         num_docs += 1;
 
-        let hash = calculate_hash(&doc.text);
-        if !index.insert_hash(hash) {
+        // let hash = calculate_hash(&doc.text);
+        // if !index.insert_hash(hash) {
+        //     kept_docs += 1;
+        //     println!("{}", line);
+        // }
+        let bytes = &doc.text.as_bytes();
+        if !index.contains(bytes) {
             kept_docs += 1;
-            println!("{}", line);
+            index.add(bytes);
+            writer.write(&line).unwrap();
+            writer.write(b"\n").unwrap();
         }
     }
 
