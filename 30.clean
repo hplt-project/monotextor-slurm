@@ -35,7 +35,7 @@ process-file() {
     [ -s $output_dir/$batch_out ] && exit 0
     zstdcat $input_dir/$batch | clean | zstdmt -10 >$output_dir/$batch_out.tmp
     # attempt to sync metadata to avoid mv returning error "cannot stat"
-    sync && stat $output_dir/$batch_out.tmp && mv $output_dir/$batch_out.tmp $output_dir/$batch_out
+    sync $output_dir/$batch_out.tmp && stat $output_dir/$batch_out.tmp && mv $output_dir/$batch_out.tmp $output_dir/$batch_out
 }
 export -f process-file
 
