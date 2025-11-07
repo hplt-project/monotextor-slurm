@@ -51,10 +51,15 @@ scorer = DocumentScorer()
 # Load monofixer replacements
 # if no pt1 it doesn't matter, monofixer does not support languages without pt1
 monofixer_lang = 'any'
-if args.lang.split('_')[1] in ('Hans' or 'Hant'):
+if args.lang.split('_')[1] in ('Hans', 'Hant'):
     monofixer_lang = 'zh'
 elif isolang.pt1:
     monofixer_lang = isolang.pt1
+elif isolang.pt3 == 'hbs':
+    monofixer_lang = 'hbs'
+elif isolang.macro() and isolang.macro().pt1:
+    monofixer_lang = isolang.macro().pt1
+print(f"Using langcode {monofixer_lang} for monofixer", file=sys.stderr)
 chars_lang, charsRe_lang = restorative_cleaning.getCharsReplacements(monofixer_lang)
 
 @contextlib.contextmanager
@@ -180,12 +185,12 @@ def robots_filter(url):
 
 # Convert certain langcodes to a form that WDS supports
 # because WDS may have the macro or the individual and openlidv2 otherwise
-# so we try to match 'hplt_canonical_label' in
+# so we try to match 'flores_code' in
 # https://huggingface.co/datasets/laurievb/OpenLID-v2/blob/cc7b18c/hplt/hplt_200_lang_labels.jsonl
 # to language_3_chars here
 # https://github.com/pablop16n/web-docs-scorer/blob/37a3f3421cc7495b9d7cb5bdd2ba36dad7e7db5d/src/docscorer/configurations/language_adaption/medians_language.csv
 # if languages are not present in that csv, WDS will use standard generic values
-# this function assumes input is a code from hplt_canonical_labels
+# this function assumes input is a code from flores_codes
 def get_lang_wds(langcode_script):
     if langcode_script == 'und' or langcode_script == 'unk':
         return langcode_script
@@ -193,19 +198,23 @@ def get_lang_wds(langcode_script):
         langcode, script = langcode_script.split('_')
     except ValueError as e:
         raise ValueError(f"Could not parse {lancode_script}") from e
-    if langcode == 'cmn':
-        # openlidv2 uses individual code for mandarin
+    if langcode in ('prs', 'pes'):
+        # openlidv2 uses individual codes for persian
+        return f'fas_{script}'
+    if langcode in ('cmn', 'yue'):
+        # openlidv2 uses individual code for mandarin and cantonese
         return f'zho_{script}'
-    if langcode_script == 'zsm_Latn':
+    if langcode_script in 'zsm_Latn':
         # wds only has 'ind' and 'msa'
         return 'msa_Latn'
     if langcode_script == 'swa_Latn':
         # wds has swahili individual
         return 'swh_Latn'
-    if langcode_script == 'ara_Arab':
-        # wds uses individual
-        return 'arb_Arab'
+    if langcode in ('ara', 'acm', 'acq', 'aeb', 'apc', 'arb', 'ars', 'ary', 'arz'):
+        # wds uses individual for arabic (standard), but any variant should be possible to be scored
+        return f'arb_{script}'
     if langcode in ('lvs', 'ltg'):
+        # wds uses macro for latvian
         return 'lav_Latn'
 
     return langcode_script
@@ -220,7 +229,7 @@ for line in sys.stdin:
         doc["robots"] = robots_filter(doc["u"])
     wds_seg_langs = list(map(get_lang_wds, doc["seg_langs"]))
     doc["doc_scores"] = scorer.score_text(
-            ref_lang=get_lang_wds(args.lang), # we use args.lang because it has been converted to hplt codes
+            ref_lang=get_lang_wds(doc["lang"][0]), # we use args.lang because it has been converted to hplt codes
             lang_segments=wds_seg_langs,
             scores_lang=[1.0]*len(doc["seg_langs"]), #TODO hack, should remove this
             document_text=doc["text"],
