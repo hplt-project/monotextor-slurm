@@ -89,6 +89,8 @@ After that, the pipeline can start running. HQ is only needed from `10.dedup.sh`
 
 Currently supported version of HQ is 0.22.
 
+**WARNING**: this pipeline may interfere with other tools that use HQ if you are using them at the same time.
+
 ## Configure
 Copy the `.env.example` to `.env` and edit the variables accordingly.
 Needed variables are:
