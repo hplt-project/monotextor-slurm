@@ -1,0 +1,47 @@
+#!/bin/bash
+set -euo pipefail
+shopt -s failglob
+source .env
+
+IFS=" " read -ra args <<< $HQ_ENTRY
+LANG=${args[0]}
+INPUT_DIR=$WORKSPACE/collections_merged
+JSON_FILES=`ls -1 $INPUT_DIR/$LANG/batch_*.jsonl.zst`
+OUTPUT_DIR=$WORKSPACE/exact-dedup-global/$LANG
+mkdir -p $OUTPUT_DIR
+
+# Log which files are processed
+echo $JSON_FILES >&2
+
+# Read the split output, compress it to temp, then move
+compress-batch(){
+    local file=$1
+    # Remove 0s prefix
+    local name=$(echo $file | sed -E "s/\_0+/_/g")
+
+    # compress stdin, write to a temp
+    zstd -T$SLURM_CPUS_ON_NODE -10 >$name.jsonl.zst.tmp
+
+    # remove temp suffix
+    sync
+    stat $name.jsonl.zst.tmp
+    mv $name.jsonl.zst.tmp $name.jsonl.zst
+}
+export -f compress-batch
+
+
+# check if the task has already done
+temps=$(find $OUTPUT_DIR -name "batch_*.jsonl.zst.tmp" | wc -l)
+if [[ $temps -eq 0 ]] && ! [ -z "$(ls $OUTPUT_DIR)" ]; then
+    echo "Task '$HQ_ENTRY' already done" >&2
+    exit 0
+fi
+
+sing="singularity exec --bind $(pwd -P) --bind $WORKSPACE --pwd $(pwd -P) monotextor.sif"
+
+/usr/bin/time -v \
+$sing exact-dedup -n 25G $JSON_FILES \
+| split - \
+    --numeric-suffixes=1 -a 8 -C 40G \
+    --filter='compress-batch $FILE' \
+    $OUTPUT_DIR/batch_
