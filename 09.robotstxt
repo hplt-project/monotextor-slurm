@@ -57,7 +57,7 @@ export -f robotsfilterbatch
 batches=`find -L $INPUT_DIR* -maxdepth 1 -mindepth 1 -type d`
 
 # Extract robots.txt from WARCs
-binddirs=`echo $INPUT_DIR* | tr ' ' ','`,$OUTPUT_DIR,$(pwd -P)
+binddirs=$INPUT_DIR,$OUTPUT_DIR,$(pwd -P)
 singularity exec --bind $binddirs --pwd $(pwd -P) monotextor.sif \
 parallel -j$SLURM_CPUS_ON_NODE --halt now,fail=1 \
     extractrobots {} $OUTPUT_DIR/{\#} ::: $batches
@@ -101,6 +101,6 @@ singularity exec --bind $OUTPUT_DIR monotextor.sif \
 zstdmt -qf --rm $OUTPUT_DIR/disallowed-urls
 mv $OUTPUT_DIR/disallowed-urls.fst.tmp $OUTPUT_DIR/disallowed-urls.fst
 
-rm $OUTPUT_DIR/*/urls.txt $OUTPUT_DIR/urls.sorted.txt
+#rm $OUTPUT_DIR/*/urls.txt $OUTPUT_DIR/urls.sorted.txt
 
 echo "Finished on $(date)" >&2

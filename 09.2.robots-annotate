@@ -1,0 +1,25 @@
+#!/bin/bash
+#SBATCH -A project_465002259
+#SBATCH -p small
+#SBATCH --ntasks 1
+#SBATCH --cpus-per-task 128
+#SBATCH --mem-per-cpu 1750
+#SBATCH --time=72:00:00
+#SBATCH --output=logs/%x.out
+set -euo pipefail
+source .env
+
+COLL=$1
+INPUT_DIR=${COLLECTIONS[$COLL]}
+
+flashrobots=/flash/$SBATCH_ACCOUNT/robotstxt/$COLL
+binddirs="$INPUT_DIR,$flashrobots,$(pwd -P)"
+batches=`find -L $INPUT_DIR -maxdepth 1 -mindepth 1 -type d -name "[0-9]*"`
+if [ "$COLL" == "archivebot" ]; then
+    batches=`find -L $INPUT_DIR/* -maxdepth 1 -mindepth 1 -type d -name "[0-9]*"`
+fi
+echo "batches: $batches"
+
+singularity exec --bind $binddirs --pwd $(pwd -P) monotextor.sif \
+parallel -j64 robotstxt-annotate $flashrobots/disallowed-urls.fst \
+    {}/metadata.zst {}/allowed.zst ::: $batches
