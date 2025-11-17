@@ -45,4 +45,4 @@ RUN rm -r /root/.cargo \
     /opt/warc2text/.git \
     /opt/monotextor_utils
 
-ENV LC_ALL C.UTF-8
+ENV LC_ALL=C.UTF-8
