@@ -1,21 +1,26 @@
-use std::time::Instant;
-use gaoya::minhash::calculate_minhash_params;
-use serde_json::Result;
 use clap::Parser;
 use env_logger::Env;
+use gaoya::minhash::calculate_minhash_params;
 use log::info;
+use serde_json::Result;
+use std::time::Instant;
 
+use monotextor_utils::indexer::Indexer;
 use monotextor_utils::minhash_processor::Tokenization;
 use monotextor_utils::utils::memory_usage;
-use monotextor_utils::indexer::Indexer;
-
 
 #[derive(Parser)]
-#[command(version, about="Index a set of documents in JSONL format. \
-                       Then print the cluster array of duplicates.")]
-struct Args{
-    #[arg(long, default_value_t=20000,
-           help="Number of lines to be processed at a time")]
+#[command(
+    version,
+    about = "Index a set of documents in JSONL format. \
+                       Then print the cluster array of duplicates."
+)]
+struct Args {
+    #[arg(
+        long,
+        default_value_t = 20000,
+        help = "Number of lines to be processed at a time"
+    )]
     batch_size: usize,
     #[arg(long, short, default_value_t=-1,
            help="Band to be indexed. Values from 0 to band_size-1. If none specified, index all.")]
@@ -23,8 +28,12 @@ struct Args{
     #[arg(value_enum, long, short, default_value_t=Tokenization::Whitespace,
            help="Tokenization type.")]
     tokenizer: Tokenization,
-    #[arg(short, long, default_value_t=3,
-           help="Size of the non-overlapping window for character tokenization.")]
+    #[arg(
+        short,
+        long,
+        default_value_t = 3,
+        help = "Size of the non-overlapping window for character tokenization."
+    )]
     window_size: usize,
 
     // #[arg(long, default_value_t=1000,
@@ -32,28 +41,47 @@ struct Args{
     //          will be marked to be directly discarded. \
     //          Not even keeping one of the group as representative.")]
     // num_duplicates_threshold: usize,
-    #[arg(long, short, default_value_t=0.8, help="Jaccard similarity threshold.")]
+    #[arg(
+        long,
+        short,
+        default_value_t = 0.8,
+        help = "Jaccard similarity threshold."
+    )]
     jaccard_threshold: f64,
-    #[arg(long, short, required=false,
-           help="Number of permutations, a.k.a number of hashes. \
-                 If provided, num_bands and band_width will be ignored.")]
+    #[arg(
+        long,
+        short,
+        required = false,
+        help = "Number of permutations, a.k.a number of hashes. \
+                 If provided, num_bands and band_width will be ignored."
+    )]
     permutations: Option<usize>,
-    #[arg(long, default_value_t=17, help="Number of bands. If provided, permutations will be ignored.")]
+    #[arg(
+        long,
+        default_value_t = 17,
+        help = "Number of bands. If provided, permutations will be ignored."
+    )]
     num_bands: usize,
-    #[arg(long, default_value_t=15, help="Band width. If provided, permutations will be ignored.")]
+    #[arg(
+        long,
+        default_value_t = 15,
+        help = "Band width. If provided, permutations will be ignored."
+    )]
     band_width: usize,
     //#[arg(long, short='c', required=false, takes_value=false,
     //       help="Instead of filtering duplicates, print the clusters array and exit.")]
     //print_clusters: bool,
-
-    #[arg(long, short, required=false,
-           help="Print MinHash parameters and finish.")]
+    #[arg(
+        long,
+        short,
+        required = false,
+        help = "Print MinHash parameters and finish."
+    )]
     dry_run: bool,
 
-    #[arg(help="zstd compressed jsonl files to be indexed.")]
+    #[arg(help = "zstd compressed jsonl files to be indexed.")]
     files: Vec<String>,
 }
-
 
 fn main() -> Result<()> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
@@ -64,21 +92,26 @@ fn main() -> Result<()> {
     let mut num_bands = args.num_bands;
     let mut band_width = args.band_width;
     match args.permutations {
-        Some(p) => (num_bands, band_width) = calculate_minhash_params(
-                args.jaccard_threshold, p
-            ),
+        Some(p) => (num_bands, band_width) = calculate_minhash_params(args.jaccard_threshold, p),
         _ => (),
     }
-    let mut indexer = Indexer::new(num_bands, band_width, args.tokenizer, args.window_size,
-                                   args.jaccard_threshold, args.band_id, args.batch_size);
-    info!("Num permutations: {}", num_bands*band_width);
+    let mut indexer = Indexer::new(
+        num_bands,
+        band_width,
+        args.tokenizer,
+        args.window_size,
+        args.jaccard_threshold,
+        args.band_id,
+        args.batch_size,
+    );
+    info!("Num permutations: {}", num_bands * band_width);
     info!("Num bands: {}", num_bands);
     info!("Band width: {}", band_width);
     info!("Indexed band num: {}", args.band_id);
     if args.dry_run {
         // With dry run, print params and exit
         info!("Finished");
-        return Ok(())
+        return Ok(());
     }
 
     info!("Indexing documents");

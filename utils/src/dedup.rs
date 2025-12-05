@@ -1,11 +1,11 @@
-use std::io::{BufRead, BufReader};
+use gaoya::unionfind::UnionFind;
+use log::debug;
+use regex::Regex;
+use std::collections::HashMap;
 use std::fs::File;
 use std::hash::{BuildHasher, Hasher};
-use std::collections::HashMap;
+use std::io::{BufRead, BufReader};
 use zstd::stream::read::Decoder;
-use gaoya::unionfind::UnionFind;
-use regex::Regex;
-use log::debug;
 
 pub struct DedupFilter {
     pub num_docs: usize,
@@ -34,18 +34,21 @@ impl DedupFilter {
     }
 
     pub fn read_cluster_file(filename: String) -> UnionFind {
-        let file = File::open(&filename)
-            .expect(format!("Error opening file '{filename}'").as_str());
+        let file =
+            File::open(&filename).expect(format!("Error opening file '{filename}'").as_str());
         let decoder = Decoder::new(file)
             .expect(format!("Uncompressed or corrupted file '{filename}'").as_str());
         let mut reader = BufReader::new(decoder);
 
         // Read header containing the number of records
         let mut line = String::new();
-        reader.read_line(&mut line).expect("Error reading header of clusterfile");
+        reader
+            .read_line(&mut line)
+            .expect("Error reading header of clusterfile");
         line.pop();
         let parts: Vec<&str> = line.split(&[' ', '\t']).collect();
-        let num_records: usize = parts[0].parse()
+        let num_records: usize = parts[0]
+            .parse()
             .expect(format!("Could not parse {}", parts[0]).as_str());
 
         let regex_header = Regex::new(r#"^[0-9]+$"#).expect("Error creating regex");
@@ -61,16 +64,16 @@ impl DedupFilter {
             let parts = line.split(&[' ', '\t']);
             for (j, p) in parts.enumerate() {
                 if p.is_empty() {
-                    continue
+                    continue;
                 }
-                let id: usize = p.parse().expect(
-                    format!("Could not parse '{}' in line {}:", p, i).as_str());
+                let id: usize = p
+                    .parse()
+                    .expect(format!("Could not parse '{}' in line {}:", p, i).as_str());
                 if i == 0 {
                     uf.parents[j] = id;
-                }
-                else {
+                } else {
                     if id == uf.parents[j] {
-                        continue
+                        continue;
                     }
                     uf.union(j, id);
                 }
@@ -82,14 +85,14 @@ impl DedupFilter {
     }
 
     // Count how many elements has each cluster
-    fn compute_cluster_sizes(uf: &UnionFind) -> HashMap<usize,usize> {
+    fn compute_cluster_sizes(uf: &UnionFind) -> HashMap<usize, usize> {
         let mut num_clusters = 0;
         for i in 0..uf.parents.len() {
             if i != uf.parents[i] {
                 num_clusters += 1;
             }
         }
-        let mut sizes: HashMap<usize,usize> = HashMap::with_capacity(num_clusters);
+        let mut sizes: HashMap<usize, usize> = HashMap::with_capacity(num_clusters);
 
         for i in uf.parents.iter() {
             if let Some(x) = sizes.get_mut(&i) {
@@ -105,9 +108,8 @@ impl DedupFilter {
     // Read compressed JSONL and discard duplicates according to a UF parents array
     // Re-assign doc id with a unique num reference given
     // If duplicates is true, print only duplicates
-    pub fn filter_dups(&mut self, filename: &String){
-        let file = File::open(filename)
-            .expect(format!("Error opening file '{filename}'").as_str());
+    pub fn filter_dups(&mut self, filename: &String) {
+        let file = File::open(filename).expect(format!("Error opening file '{filename}'").as_str());
         let decoder = Decoder::new(file)
             .expect(format!("Uncompressed or corrupted file '{filename}'").as_str());
         let reader = BufReader::new(decoder);
@@ -125,9 +127,10 @@ impl DedupFilter {
                 self.num_read_docs += 1;
                 continue;
             } else if self.uf.parents[self.num_read_docs] != self.num_read_docs {
-                debug!("Discarding document {} in cluster {}",
-                       self.num_read_docs,
-                       self.uf.parents[self.num_read_docs]);
+                debug!(
+                    "Discarding document {} in cluster {}",
+                    self.num_read_docs, self.uf.parents[self.num_read_docs]
+                );
                 self.num_read_docs += 1;
                 continue;
             }
@@ -135,20 +138,22 @@ impl DedupFilter {
             if let Some(cluster_sizes) = &self.cluster_sizes {
                 let csize = cluster_sizes
                     .get(&self.uf.parents[self.num_read_docs])
-                    .expect(format!(
+                    .expect(
+                        format!(
                             "Could not found cluster size for doc {} in cluster {}",
-                            self.num_read_docs,
-                            self.uf.parents[self.num_read_docs])
-                        .as_str());
+                            self.num_read_docs, self.uf.parents[self.num_read_docs]
+                        )
+                        .as_str(),
+                    );
 
                 // we do not parse the document, otherwise the speed reduces by a half
                 // so just doing a safe check that the end of the string is actually the
                 // end of the JSON, therefore we can print the line as is, omit the last char
                 // and add the cluster_size field
-                if line.as_bytes()[line.len()-1] != b'}' {
+                if line.as_bytes()[line.len() - 1] != b'}' {
                     panic!("Wrong line ending");
                 }
-                println!("{},\"cluster_size\":{}}}", &line[0..line.len()-1], csize);
+                println!("{},\"cluster_size\":{}}}", &line[0..line.len() - 1], csize);
             } else {
                 println!("{}", line);
             }
@@ -161,11 +166,10 @@ impl DedupFilter {
 
 // No-op hasher from gaoya
 pub struct NoOpHasher {
-    pub hash: u64
+    pub hash: u64,
 }
 
 impl Hasher for NoOpHasher {
-
     #[inline]
     fn finish(&self) -> u64 {
         debug_assert!(self.hash > 0);
@@ -190,6 +194,6 @@ impl BuildHasher for NoOpHashBuilder {
 
     #[inline]
     fn build_hasher(&self) -> Self::Hasher {
-        NoOpHasher {hash: 0}
+        NoOpHasher { hash: 0 }
     }
 }

@@ -1,34 +1,39 @@
 use std::collections::HashMap;
-use std::sync::mpsc::sync_channel;
+use std::fs;
+use std::io;
 use std::io::BufRead;
+use std::sync::mpsc::sync_channel;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::io;
-use std::fs;
 
 use aho_corasick::AhoCorasick;
+use clap::Parser;
+use env_logger::Env;
 use fst::Set;
-use serde::{Deserialize, Serialize};
 use itertools::Itertools;
 use log::info;
-use rayon::prelude::*;
-use env_logger::Env;
 use memmap2::Mmap;
+use rayon::prelude::*;
 use regex::Regex;
-use clap::Parser;
+use serde::{Deserialize, Serialize};
 
 use heli_otr::identifier::Identifier;
 use heli_otr::{load_models, pythonpath};
 
-
 #[derive(Parser)]
-#[command(version, about="Annotate JSONL documents with langid and/or robotstxt allowance")]
+#[command(
+    version,
+    about = "Annotate JSONL documents with langid and/or robotstxt allowance"
+)]
 struct Args {
-    #[arg(short, help="Path to heli-otr model directory")]
+    #[arg(short, help = "Path to heli-otr model directory")]
     modelpath: Option<String>,
-    #[arg(short, help="Add robotstxt disallowed info with an FST index")]
+    #[arg(short, help = "Add robotstxt disallowed info with an FST index")]
     disallowed_index: Option<String>,
-    #[arg(short, help="Remove documents that contain any of these list of secrets")]
+    #[arg(
+        short,
+        help = "Remove documents that contain any of these list of secrets"
+    )]
     secrets_list: Option<String>,
 }
 
@@ -61,7 +66,7 @@ struct Document {
     #[serde(skip_serializing_if = "Option::is_none")]
     id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pii: Option<Vec<(usize,usize)>>,
+    pii: Option<Vec<(usize, usize)>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     filter: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -69,7 +74,6 @@ struct Document {
     #[serde(rename = "web-register", skip_serializing_if = "Option::is_none")]
     web_register: Option<HashMap<String, f32>>,
 }
-
 
 fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
@@ -93,10 +97,9 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
     let secrets_matcher: Option<_>;
     if let Some(filename) = args.secrets_list {
-        let file_read = io::BufReader::new(fs::File::open(&filename).expect("Secrets list does not exist"));
-        let patterns: Vec<_> = file_read.lines()
-            .map(|line| line.unwrap())
-            .collect();
+        let file_read =
+            io::BufReader::new(fs::File::open(&filename).expect("Secrets list does not exist"));
+        let patterns: Vec<_> = file_read.lines().map(|line| line.unwrap()).collect();
         secrets_matcher = Some(AhoCorasick::new(&patterns)?);
     } else {
         secrets_matcher = None;
@@ -133,16 +136,15 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         // process every batch in parallel
         // parse json document
         // add segment level langid
-        let docs: Vec<_> = batch.par_iter()
+        let docs: Vec<_> = batch
+            .par_iter()
             .filter_map(|line: &String| {
                 // each thread will create the mutable part of the identifier
                 // and share with the main thread the language model, which is immutable
-                let mut detector = Identifier::new(
-                    Arc::clone(&charmodelref),
-                    Arc::clone(&wordmodelref),
-                );
-                let mut doc: Document = serde_json::from_str(line.as_str())
-                    .expect("Error parsing JSON document");
+                let mut detector =
+                    Identifier::new(Arc::clone(&charmodelref), Arc::clone(&wordmodelref));
+                let mut doc: Document =
+                    serde_json::from_str(line.as_str()).expect("Error parsing JSON document");
 
                 // Documents that contain secrets are discarded
                 if let Some(matcher) = &secrets_matcher {
@@ -164,7 +166,9 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                     let url = url_prefix_re
                         .captures(&doc.u)
                         .expect("Could not parse url")
-                        .get(3).expect("Could not obtain capture group 3 for url").as_str();
+                        .get(3)
+                        .expect("Could not obtain capture group 3 for url")
+                        .as_str();
 
                     // Search in the fst if we have the url
                     // this time exact match, as we have full urls in the index
@@ -176,7 +180,8 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                 }
 
                 Some(doc)
-            }).collect();
+            })
+            .collect();
 
         // serialize modified documents and print them to stdout
         for doc in docs {
@@ -189,7 +194,11 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let num_read_final = *num_read.lock().unwrap();
     info!("{} documents read", num_read_final);
     let removed = num_read_final - num_kept;
-    info!("{} documents removed ({:.2} %)", removed, removed as f32 / (num_read_final as f32) *100.0);
+    info!(
+        "{} documents removed ({:.2} %)",
+        removed,
+        removed as f32 / (num_read_final as f32) * 100.0
+    );
     info!("Finished");
     Ok(())
 }

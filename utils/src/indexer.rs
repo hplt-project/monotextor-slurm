@@ -1,17 +1,15 @@
+use gaoya::minhash::MinHashDeduper;
+use gaoya::unionfind::UnionFind;
+use itertools::Itertools;
+use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::sync::mpsc::sync_channel;
-use std::fs::File;
 use std::thread;
-use rayon::prelude::*;
-use itertools::Itertools;
-use gaoya::unionfind::UnionFind;
-use gaoya::minhash::{
-    MinHashDeduper,
-};
-use serde::{Deserialize, Serialize};
 use zstd::stream::read::Decoder;
 
-use crate::minhash_processor::{Tokenization, MinHashProcessor};
+use crate::minhash_processor::{MinHashProcessor, Tokenization};
 
 #[derive(Deserialize, Serialize)]
 struct DocumentText {
@@ -19,24 +17,28 @@ struct DocumentText {
     pub text: String,
 }
 
-pub struct Indexer
-{
+pub struct Indexer {
     hasher: MinHashProcessor,
     index: MinHashDeduper<u32>,
     batch_size: usize,
 }
 
 impl Indexer {
-    pub fn new(num_bands: usize, band_width: usize, tokenizer: Tokenization,
-               window_size: usize, jaccard_threshold: f64, band_id: isize,
-               batch_size: usize) -> Self {
+    pub fn new(
+        num_bands: usize,
+        band_width: usize,
+        tokenizer: Tokenization,
+        window_size: usize,
+        jaccard_threshold: f64,
+        band_id: isize,
+        batch_size: usize,
+    ) -> Self {
         Self {
             hasher: MinHashProcessor::new(num_bands * band_width, tokenizer, window_size),
             index: MinHashDeduper::new_index(num_bands, band_width, jaccard_threshold, band_id),
             batch_size: batch_size,
         }
     }
-
 
     // Read one file, parse, hash and insert each document in the index
     pub fn index_file(&mut self, filename: &String, global_id: &mut usize) {
@@ -66,12 +68,14 @@ impl Indexer {
 
         // Read batched lines sent from the thread and process them
         while let Ok(batch) = receiver.recv() {
-            let signatures: Vec<_> = batch.par_iter()
+            let signatures: Vec<_> = batch
+                .par_iter()
                 .map(|line: &String| {
-                    let doc: DocumentText = serde_json::from_str(line.as_str())
-                        .expect("Error parsing JSON document");
+                    let doc: DocumentText =
+                        serde_json::from_str(line.as_str()).expect("Error parsing JSON document");
                     self.hasher.create_signature(&doc.text)
-                }).collect();
+                })
+                .collect();
 
             // Enumerate all the documents, global id's
             let new_id = *global_id + signatures.len();

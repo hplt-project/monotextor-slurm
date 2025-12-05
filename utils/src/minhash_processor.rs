@@ -1,9 +1,9 @@
 use clap::ValueEnum;
-use gaoya::minhash::{MinHasher32, MinHasher};
-use gaoya::text::whitespace_split;
 use fnv::FnvBuildHasher;
-use shingles::Shingles;
+use gaoya::minhash::{MinHasher, MinHasher32};
+use gaoya::text::whitespace_split;
 use seahash;
+use shingles::Shingles;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum Tokenization {
@@ -28,8 +28,11 @@ pub struct MinHashProcessor {
 }
 
 impl MinHashProcessor {
-    pub fn new(permutations: usize, tokenization: Tokenization, window_size: usize)
-            -> MinHashProcessor {
+    pub fn new(
+        permutations: usize,
+        tokenization: Tokenization,
+        window_size: usize,
+    ) -> MinHashProcessor {
         Self {
             minhasher: MinHasher32::new(permutations),
             tokenization: tokenization,
@@ -49,16 +52,14 @@ impl MinHashProcessor {
                 }
                 self.minhasher.create_signature(indices.into_iter())
             }
-            Tokenization::Whitespace => {
-                self.minhasher.create_signature(
-                    whitespace_split(&text.to_lowercase()))
-            }
-            Tokenization::Char => {
-                self.minhasher.create_signature(
-                    Shingles::new_with_step(text, self.window_size, self.window_size))
-            }
+            Tokenization::Whitespace => self
+                .minhasher
+                .create_signature(whitespace_split(&text.to_lowercase())),
+            Tokenization::Char => self.minhasher.create_signature(Shingles::new_with_step(
+                text,
+                self.window_size,
+                self.window_size,
+            )),
         }
     }
 }
-
-

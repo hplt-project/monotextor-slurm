@@ -8,29 +8,28 @@
  * dumping the entries that considers relevant (entries that match a certain set of
  * user-agents, for example) to the input file of this program.
  */
-use std::io::{self,BufRead};
-use std::sync::mpsc::{Sender, channel};
-use std::sync::{Arc, RwLock};
 use std::collections::HashSet;
 use std::fs;
+use std::io::{self, BufRead};
+use std::sync::mpsc::{channel, Sender};
+use std::sync::{Arc, RwLock};
 
-use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle, ProgressFinish};
-use fst::{Set, IntoStreamer, Streamer};
-use patricia_tree::StringPatriciaSet;
-use regex_automata::dense;
-use rayon::prelude::*;
-use env_logger::Env;
-use regex::Regex;
 use clap::Parser;
+use env_logger::Env;
+use fst::{IntoStreamer, Set, Streamer};
+use indicatif::{ParallelProgressIterator, ProgressBar, ProgressFinish, ProgressStyle};
 use log::{debug, warn};
-
+use patricia_tree::StringPatriciaSet;
+use rayon::prelude::*;
+use regex::Regex;
+use regex_automata::dense;
 
 #[derive(Parser)]
-#[command(version, about="Generate a list of disallowed URLs by robots.txt")]
+#[command(version, about = "Generate a list of disallowed URLs by robots.txt")]
 struct Args {
-    #[arg(help="FST indexed URLs to search in")]
+    #[arg(help = "FST indexed URLs to search in")]
     indexpath: String,
-    #[arg(help="List of allowance URL patterns from robots.txt")]
+    #[arg(help = "List of allowance URL patterns from robots.txt")]
     allowancefiles: Vec<String>,
 }
 
@@ -55,8 +54,8 @@ impl Clone for SharedState {
 // and anchors are removed
 pub fn is_meta_character(c: char) -> bool {
     match c {
-        '\\' | '.' | '+' | '?' | '(' | ')' | '|' | '[' | ']' | '{'
-        | '}' | '#' | '&' | '-' | '~' => true,
+        '\\' | '.' | '+' | '?' | '(' | ')' | '|' | '[' | ']' | '{' | '}' | '#' | '&' | '-'
+        | '~' => true,
         _ => false,
     }
 }
@@ -64,7 +63,7 @@ pub fn escape(text: &str) -> String {
     let mut buf = String::with_capacity(text.len());
     for c in text.chars() {
         if c == '^' || c == '$' {
-            continue
+            continue;
         } else if c == '*' {
             buf.push('.');
         } else if is_meta_character(c) {
@@ -75,8 +74,10 @@ pub fn escape(text: &str) -> String {
     buf
 }
 
-
-fn process_file(state: &mut SharedState, filepath: &str) -> Result<(), Box<dyn std::error::Error + 'static>> {
+fn process_file(
+    state: &mut SharedState,
+    filepath: &str,
+) -> Result<(), Box<dyn std::error::Error + 'static>> {
     // check if $ anchor at the end
     let anchor_end = Regex::new(r"[\$\*]$")?;
     // extract domain from url
@@ -101,7 +102,10 @@ fn process_file(state: &mut SharedState, filepath: &str) -> Result<(), Box<dyn s
         let allowed = match parts[1] {
             "1" => true,
             "0" => false,
-            _ => panic!("{}", format!("Could not parse bool in line {}", i+1).as_str()),
+            _ => panic!(
+                "{}",
+                format!("Could not parse bool in line {}", i + 1).as_str()
+            ),
         };
 
         // Extract domain, check if has changed
@@ -109,7 +113,9 @@ fn process_file(state: &mut SharedState, filepath: &str) -> Result<(), Box<dyn s
         let domain = domain_re
             .captures(&url)
             .expect(format!("Failed parsing domain from url: {line}").as_str())
-            .get(3).ok_or("Could not obtain captured group 3")?.as_str();
+            .get(3)
+            .ok_or("Could not obtain captured group 3")?
+            .as_str();
         if cur_domain != domain {
             // New domain, print the final list of disallowed
             cur_domain.clear();
@@ -144,7 +150,8 @@ fn process_file(state: &mut SharedState, filepath: &str) -> Result<(), Box<dyn s
             .byte_classes(true)
             .premultiply(true)
             .reverse(false)
-            .build(&query).expect(format!("Escaped '{}' url '{}'", query, url).as_str());
+            .build(&query)
+            .expect(format!("Escaped '{}' url '{}'", query, url).as_str());
         let dfa = match dense_dfa {
             dense::DenseDFA::PremultipliedByteClass(dfa) => dfa,
             _ => unreachable!(),
@@ -162,9 +169,14 @@ fn process_file(state: &mut SharedState, filepath: &str) -> Result<(), Box<dyn s
             } else {
                 // if the allowance list becomes too large, stop adding urls to it
                 if cur_allowance.len() > 500_000 {
-                    state.sender.send(format!("{}", String::from_utf8(key.to_vec())?))?;
+                    state
+                        .sender
+                        .send(format!("{}", String::from_utf8(key.to_vec())?))?;
                     if !warned_size {
-                        warn!("The in-memory list reached size limit for query '{}' in file '{}'", escaped, filepath);
+                        warn!(
+                            "The in-memory list reached size limit for query '{}' in file '{}'",
+                            escaped, filepath
+                        );
                         warned_size = true;
                     }
                 } else {

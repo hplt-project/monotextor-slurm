@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-pub mod minhash_processor;
-pub mod indexer;
-pub mod utils;
 pub mod dedup;
+pub mod indexer;
+pub mod minhash_processor;
+pub mod split;
+pub mod utils;
 
 #[derive(Deserialize, Serialize)]
 pub struct DocumentText {
