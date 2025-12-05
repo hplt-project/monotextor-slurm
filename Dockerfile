@@ -26,14 +26,14 @@ RUN git clone --jobs 8 --recursive https://github.com/bitextor/warc2text /opt/wa
 
 COPY requirements.txt /opt/reqs.txt
 RUN uv pip install --system -r /opt/reqs.txt \
-    && git clone -b openlidv2 https://github.com/zjaume/heli-otr.git \
+    && git clone -b openlid-hpltv4 https://github.com/zjaume/heli-otr.git \
     && cd heli-otr \
-    && git checkout 0988902 \
+    && git checkout 24f8df9 \
     && uv pip install --system . \
     && heli-convert \
     && rm -fr /heli-otr
 
-COPY utils /opt/monotextor_utils
+COPY --exclude=target utils /opt/monotextor_utils
 RUN cargo install \
     --locked \
     --root /usr/local \
