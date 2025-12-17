@@ -493,7 +493,7 @@ checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 [[package]]
 name = "heli_otr"
 version = "0.3.0"
-source = "git+https://github.com/ZJaume/heli-otr?rev=0988902#0988902e860d6e1dd1b4444de3dfe245921afc51"
+source = "git+https://github.com/ZJaume/heli-otr?rev=24f8df9#24f8df9fae54578747a28da27195d339fadfcf51"
 dependencies = [
  "bitcode",
  "env_logger",

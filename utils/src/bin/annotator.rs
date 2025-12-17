@@ -95,6 +95,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     } else {
         pythonpath().expect("Could loading heli_otr path, please install it as python module or provide a modelpath.")
     };
+    debug!("Loading model from: {}", modelpath);
 
     let index_main: Option<_>;
     if let Some(filename) = args.disallowed_index {
