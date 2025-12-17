@@ -37,11 +37,20 @@ struct Args {
     secrets_list: Option<String>,
 }
 
+#[derive(Serialize, Deserialize)]
+struct Lang {
+    lang: Vec<String>,
+    prob: Vec<f32>,
+}
+
 // Define a document struct
 // this however, it is different from the one in lib.rs
 // because documents may have different fields at each stage
 #[derive(Serialize, Deserialize)]
 struct Document {
+    text: String,
+    xml: Option<String>,
+    md: Option<String>,
     f: String,
     o: usize,
     s: usize,
@@ -50,21 +59,23 @@ struct Document {
     c: String,
     ts: String,
     de: String,
-    crawl_id: String,
-    lang: Vec<String>,
-    prob: Vec<f32>,
-    text: String,
+    id: String,
+    #[serde(alias = "openlid-v2")]
+    openlid_v2: Lang,
     #[serde(skip_serializing_if = "Option::is_none")]
-    xml: Option<String>,
+    allowed: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    html_lang: Option<Vec<String>>,
+    htmllang: Option<Vec<String>>,
+    #[serde(alias = "glotlid-v3")]
+    glotlid_v3: Lang,
+    #[serde(alias = "openlid-v3")]
+    openlid_v3: Lang,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    seg_langs_openlid_v3: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    crawl_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     cluster_size: Option<usize>,
-    seg_langs: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    robotstxt: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pii: Option<Vec<(usize, usize)>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -155,10 +166,10 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
                 // identify each segment (splitting by endlines) in the document text
                 // add the predictions to seg_langs array in the json
-                let _ = doc.seg_langs.insert(Vec::new());
+                let _ = doc.seg_langs_openlid_v3.insert(Vec::new());
                 for line in doc.text.lines() {
                     let pred = detector.identify(&line).0.to_string();
-                    doc.seg_langs.as_mut().unwrap().push(pred);
+                    doc.seg_langs_openlid_v3.as_mut().unwrap().push(pred);
                 }
 
                 if let Some(index) = &index_main {
@@ -173,9 +184,9 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                     // Search in the fst if we have the url
                     // this time exact match, as we have full urls in the index
                     if index.contains(url) {
-                        doc.robotstxt = Some(String::from("disallowed"));
+                        doc.allowed = Some(false);
                     } else {
-                        doc.robotstxt = Some(String::from("allowed"));
+                        doc.allowed = Some(true);
                     }
                 }
 
