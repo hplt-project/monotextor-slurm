@@ -1,12 +1,21 @@
 #!/bin/bash
+#SBATCH --job-name=dedup
+#SBATCH --partition="small"
+#SBATCH --time=72:00:00
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=128
+#SBATCH --mem-per-cpu=1750
+#SBATCH --output=logs/%x.out
 set -euo pipefail
 shopt -s failglob
 source .env
 
 IFS=" " read -ra args <<< $HQ_ENTRY
 LANG=${args[0]}
-INPUT_DIR=$WORKSPACE/collections_merged
-JSON_FILES=`ls -1 $INPUT_DIR/$LANG/batch_*.jsonl.zst`
+#INPUT_DIR=$WORKSPACE/collections_merged
+INPUT_DIR=$WORKSPACE/cleaned_v3
+#JSON_FILES=`ls -1 $INPUT_DIR/$LANG/batch_*.jsonl.zst`
+JSON_FILES=`ls -1 $INPUT_DIR/$LANG/*.jsonl.zst`
 OUTPUT_DIR=$WORKSPACE/exact-dedup-global/$LANG
 mkdir -p $OUTPUT_DIR
 
@@ -20,10 +29,10 @@ compress-batch(){
     local name=$(echo $file | sed -E "s/\_0+/_/g")
 
     # compress stdin, write to a temp
-    zstd -T$SLURM_CPUS_ON_NODE -10 >$name.jsonl.zst.tmp
+    zstd -T64 -10 -qo $name.jsonl.zst.tmp
 
     # remove temp suffix
-    sync
+    sync $name.jsonl.zst.tmp
     stat $name.jsonl.zst.tmp
     mv $name.jsonl.zst.tmp $name.jsonl.zst
 }
@@ -40,8 +49,8 @@ fi
 sing="singularity exec --bind $(pwd -P) --bind $WORKSPACE --pwd $(pwd -P) monotextor.sif"
 
 /usr/bin/time -v \
-$sing exact-dedup -n 25G $JSON_FILES \
-| split - \
-    --numeric-suffixes=1 -a 8 -C 40G \
-    --filter='compress-batch $FILE' \
-    $OUTPUT_DIR/batch_
+$sing exact-dedup -t16 -c10 -b 5M -n 60G $OUTPUT_DIR/batch $JSON_FILES
+#| split - \
+#    --numeric-suffixes=1 -a 8 -C 40G \
+#    --filter='compress-batch $FILE' \
+#    $OUTPUT_DIR/batch_
