@@ -13,9 +13,9 @@ print_task() {
     local lang=$1
     local coll=$2
     if [ "$coll" == "global" ]; then
-        size=`du -c $WORKSPACE/batches/*/$lang/batch_*.jsonl.zst | tail -1 | cut -f1`
+        size=`du -c $INPUT_FOUR/*/$lang/*.jsonl.zst | tail -1 | cut -f1`
     else
-        size=`du -c $WORKSPACE/batches/$coll/$lang/batch_*.jsonl.zst | tail -1 | cut -f1`
+        size=`du -c $INPUT_FOUR/$coll/$lang/*.jsonl.zst | tail -1 | cut -f1`
     fi
     # For languages of more than 150GB run distributed minhash
     # each index is the index of the minhash band to run
@@ -38,7 +38,7 @@ merge_entries=$WORKSPACE/tasks_list/11.merge-collections
 if [ ! -s $index_entries ] || [ ! -s $dedup_entries ] || [ ! -s $merge_entries ];
 then
     temp=$(mktemp); trap "rm $temp" EXIT
-    for lang in `cat langs | grep 'eng_Latn\|rus_Cyrl\|cmn_Hans\|jpn_Jpan\|deu_Latn\|spa_Latn\|fra_Latn'`
+    for lang in `cat langs`
     do
         if echo $lang | grep -qv "eng_Latn\|rus_Cyrl\|cmn_Hans"
         then
@@ -71,10 +71,10 @@ newqueue() {
     local workers=$2
     local mem=$3
     hq alloc add slurm --name $name \
-        --workers-per-alloc 1 --max-worker-count $workers --backlog $workers \
+        --max-workers-per-alloc 1 --max-worker-count $workers --backlog $workers \
         --idle-timeout $IDLE_TIMEOUT --time-limit 72h \
         -- -p small -A $SBATCH_ACCOUNT \
-        --cpus-per-task 128 --ntasks 1 --mem-per-cpu $mem \
+        --cpus-per-task 128 --ntasks 1 --nodes 1 --mem-per-cpu $mem \
         -o "$SLURM_LOGS_DIR/workers/hq-worker-%x.log"
 }
 queueid() {
@@ -82,9 +82,9 @@ queueid() {
 }
 
 ### INDEX
-WORKERS=200
+WORKERS=50
 queue_name=index
-newqueue $queue_name $WORKERS 3500
+newqueue $queue_name $WORKERS 7500
 # obtain the allocation queue id
 qid=$(queueid $queue_name)
 trap "hq job cancel all; hq alloc remove --force $qid" INT
@@ -93,7 +93,7 @@ set +e # remove strict mode, so if job fails, script does not finish and the que
 hq submit --each-line $index_entries \
     --nodes 1 --progress \
     --stream=$SLURM_LOGS_DIR/hq-10.index.logs \
-    --max-fails=10 --crash-limit=5 \
+    --max-fails=30 --crash-limit=1 \
     bash 10.index
 set -e
 
@@ -111,20 +111,20 @@ newqueue $queue_name $WORKERS 1750
 # obtain the allocation queue id
 qid=$(queueid $queue_name)
 trap - INT
-trap "hq job cancel all; hq alloc remove --force $qid" INT
+trap "hq job cancel all; hq alloc remove $qid" INT
 
 set +e
 hq submit --each-line $dedup_entries \
     --nodes 1 --progress \
     --stream=$SLURM_LOGS_DIR/hq-10.dedup.logs \
-    --max-fails=10 --crash-limit=1 \
+    --max-fails=400 --crash-limit=1 \
     bash 10.dedup
 set -e
 
 hq submit --each-line $merge_entries \
     --cpus 64 --progress \
     --stream=$SLURM_LOGS_DIR/hq-11.merge-collections.logs \
-    --max-fails=10 --crash-limit=1 \
+    --max-fails=50 --crash-limit=1 \
     bash 11.merge-collections
 
 # Wait until the queue workers are shut down

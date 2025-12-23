@@ -14,12 +14,13 @@ source .env
 IFS=" " read -ra args <<< $HQ_ENTRY
 LANG=${args[0]}
 COLL=${args[1]}
-INPUT_DIR=$WORKSPACE/batches
+#INPUT_DIR=$WORKSPACE/batches
+INPUT_DIR=$INPUT_FOUR
 TMPSFX=tmp_$$
 if [ "$COLL" == "global" ]; then
-    JSON_FILES=`ls -1 $INPUT_DIR/*/$LANG/batch_*.jsonl.zst`
+    JSON_FILES=`ls -1 $INPUT_DIR/*/$LANG/*.jsonl.zst`
 else
-    JSON_FILES=`ls -1 $INPUT_DIR/$COLL/$LANG/batch_*.jsonl.zst`
+    JSON_FILES=`ls -1 $INPUT_DIR/$COLL/$LANG/*.jsonl.zst`
 fi
 OUTPUT_DIR=$WORKSPACE/dedup/$LANG/$COLL
 mkdir -p $OUTPUT_DIR
@@ -34,7 +35,7 @@ compress-batch(){
     local name=$(echo $file | sed -E "s/\_0+/_/g")
 
     # compress stdin, write to a temp
-    zstd -T$SLURM_CPUS_ON_NODE -10 >$name.jsonl.zst.tmp
+    zstd -T64 -10 >$name.jsonl.zst.tmp
 
     # remove temp suffix
     sync
@@ -48,10 +49,11 @@ export -f compress-batch
 temps=$(find $OUTPUT_DIR -name "batch_*.jsonl.zst.tmp" | wc -l)
 if [[ $temps -eq 0 ]] && ! [ -z "$(ls $OUTPUT_DIR)" ]; then
     echo "Task '$HQ_ENTRY' already done" >&2
+    sleep 2s
     exit 0
 fi
 
-sing="singularity exec --bind $(pwd -P) --bind $WORKSPACE --pwd $(pwd -P) monotextor.sif"
+sing="singularity exec --bind $(pwd -P) --bind $WORKSPACE --bind $INPUT_FOUR --pwd $(pwd -P) monotextor.sif"
 CLUSTER_DIR=$WORKSPACE/clusters
 CLUSTER_FILE=$CLUSTER_DIR/clusters.$LANG.$COLL.zst
 if [ -f $CLUSTER_FILE ]; then

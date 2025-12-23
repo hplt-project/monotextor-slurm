@@ -15,12 +15,13 @@ source .env
 IFS=" " read -ra args <<< $HQ_ENTRY
 LANG=${args[0]}
 COLL=${args[1]}
-INPUT_DIR=$WORKSPACE/batches
+#INPUT_DIR=$WORKSPACE/batches
+INPUT_DIR=$INPUT_FOUR
 TMPSFX=tmp_$$
 if [ "$COLL" == "global" ]; then
-    JSON_FILES=`ls -1 $INPUT_DIR/*/$LANG/batch_*.jsonl.zst`
+    JSON_FILES=`ls -1 $INPUT_DIR/*/$LANG/*.jsonl.zst`
 else
-    JSON_FILES=`ls -1 $INPUT_DIR/$COLL/$LANG/batch_*.jsonl.zst`
+    JSON_FILES=`ls -1 $INPUT_DIR/$COLL/$LANG/*.jsonl.zst`
 fi
 
 # Log which files are processed files
@@ -40,6 +41,9 @@ fi
 
 if test -s $OUTPUT_FILE; then
     echo Clusters file already exists, exiting... $OUTPUT_FILE >&2
+    shopt -u failglob
+    rm -f $OUTPUT_FILE.tmp_*
+    sleep 1s
     exit 0
 fi
 
