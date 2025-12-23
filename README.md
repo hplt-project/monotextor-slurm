@@ -159,18 +159,6 @@ When all the deduplication tasks have finished, the annotation can be eexecuted.
 ```
 The output will be available at `$WORKSPACE/annotated`.
 
-**Optional**: merge each language into a single directory:
-```
-source .env
-srun -A $SBATCH_ACCOUNT --pty -p small --ntasks 1 --cpus-per-task 128 --mem-per-cpu 1750 -t 24:00:00 bash
-```
-```
-module load parallel
-parallel -j64 bash 21.merge-collections ::: `cat langs`
-```
-That will be available at `$WORKSPACE/collections-merged`.
-
-
 **Optional**: run the cleaning from the merged collections:
 ```
 ./30.clean.sh
