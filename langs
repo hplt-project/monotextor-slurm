@@ -20,6 +20,7 @@ bho_Deva
 bjn_Arab
 bjn_Latn
 bod_Tibt
+bos_Latn
 bug_Latn
 bul_Cyrl
 cat_Latn
@@ -34,7 +35,6 @@ cym_Latn
 dan_Latn
 deu_Latn
 dik_Latn
-dyu_Latn
 dzo_Tibt
 ekk_Latn
 ell_Grek
@@ -49,6 +49,7 @@ fil_Latn
 fin_Latn
 fon_Latn
 fra_Latn
+frp_Latn
 fur_Latn
 fuv_Latn
 gaz_Latn
@@ -59,11 +60,10 @@ gug_Latn
 guj_Gujr
 hat_Latn
 hau_Latn
-hbs_Cyrl
-hbs_Latn
 heb_Hebr
 hin_Deva
 hne_Deva
+hrv_Latn
 hun_Latn
 hye_Armn
 ibo_Latn
@@ -95,6 +95,7 @@ knc_Latn
 kor_Hang
 ktu_Latn
 lao_Laoo
+lat_Latn
 lij_Latn
 lim_Latn
 lin_Latn
@@ -153,6 +154,8 @@ som_Latn
 sot_Latn
 spa_Latn
 srd_Latn
+srp_Cyrl
+srp_Latn
 ssw_Latn
 sun_Latn
 swe_Latn
@@ -189,3 +192,4 @@ yue_Hant
 zgh_Tfng
 zsm_Latn
 zul_Latn
+zxx_Zxxx
