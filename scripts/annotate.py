@@ -9,9 +9,11 @@ from xxhash import xxh128_hexdigest
 from pii_manager import PiiEnum
 from pii_manager.api import PiiManager
 from pii_manager.lang import COUNTRY_ANY
-from docscorer import DocumentScorer
+from docscorer.configuration import ScorerConfiguration
+from docscorer.docscorer import DocumentScorer
 from marisa_trie import Trie
 from iso639 import Lang
+import zstandard
 import orjson
 import regex
 
@@ -26,6 +28,7 @@ parser.add_argument('-w','--avg_words', action='store_true', help="Remove docs t
 parser.add_argument('-m','--minimum', action='store_true', help="Remove docs that do not meet the minimum size")
 parser.add_argument('-l','--language', action='store_true', help="Remove docs that do not meet the minimum correct language pct")
 parser.add_argument('-r','--robots', type=str, required=False, help="List of robots.txt disallowed urls")
+parser.add_argument('-c','--crawl_names', type=str, required=False, help="List of warc file name patters by crawl")
 parser.add_argument('-z','--cjk', action='store_true', help="Process CJK language")
 
 args = parser.parse_args()
@@ -46,7 +49,9 @@ isolang = Lang(args.lang.split('_')[0])
 url_prefix_re = regex.compile("^(https?:\/\/)?(www\.)?(.+)", regex.I)
 extract_domain = regex.compile("^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/\n]+)(.*)", regex.I)
 remove_subdomain = re.compile(".*?\.")
-scorer = DocumentScorer()
+#crawl_re = regex.compile("WIDE|GOV_AR|GO_JP|archivebot|CC-MAIN")
+crawl_re = regex.compile("(?P<wide>(WIDE|GO_JP|GOV_AR))|(?P<cc>CC-MAIN-[0-9]{4})|(?P<ab>archivebot)")
+scorer = DocumentScorer(ScorerConfiguration())
 
 # Load monofixer replacements
 # if no pt1 it doesn't matter, monofixer does not support languages without pt1
@@ -100,6 +105,40 @@ if args.explicit:
 # Load robotstxt disallowed
 if args.robots:
     robots_urls = Trie(file_iterator(args.robots))
+
+crawls = {}
+if args.crawl_names:
+    with zstandard.open(args.crawl_names, 'rt') as f:
+        for line in f:
+            crawl, warc_filename = line.strip().split('\t')
+            if crawl not in crawls:
+                crawls[crawl] = []
+
+            crawls[crawl].append(warc_filename)
+crawls_wide = {n: l for n, l in crawls.items() if n.startswith("wide")}
+
+def find_in_lists(list_dic, text):
+    for name, l in list_dic.items():
+        for i in l:
+            if text in i:
+                return name
+    raise Exception(f"Could not find text '{text}' in lists: {list_dic.keys()}")
+
+def infer_crawlname(filename):
+    match = crawl_re.match(filename)
+    groups = match.groupdict()
+    if groups["cc"]:
+        crawls_cc = {n: l for n, l in crawls.items() if n.startswith(groups["cc"])}
+        return find_in_lists(warc_list, filename)
+    elif groups["wide"]:
+        if groups["wide"].startswith("GOV_AR") or groups["wide"].startswith("GO_JP"):
+            return "wide00006"
+        return find_in_lists(crawls_wide, filename)
+    elif groups["ab"]:
+        return "archivebot"
+    else:
+        raise ValueError(f"Could not match with an existing crawl name: '{filename}'")
+
 
 def is_adult(url, extended=False):
     domain = extract_domain.sub(r"\1", url)
@@ -221,20 +260,19 @@ def get_lang_wds(langcode_script):
 
 for line in sys.stdin:
     doc = orjson.loads(line)
-    doc["id"] = xxh128_hexdigest(doc["f"] + doc["u"] + doc["ts"])
+    #doc["id"] = xxh128_hexdigest(doc["f"] + doc["u"] + doc["ts"])
     doc['text'] = monofixer(doc['text'])
     doc["filter"] = filter_doc(args, doc)
     doc["pii"] = pii_multi(doc["text"])
-    if args.robots:
-        doc["robots"] = robots_filter(doc["u"])
-    wds_seg_langs = list(map(get_lang_wds, doc["seg_langs"]))
-    doc["doc_scores"] = scorer.score_text(
-            ref_lang=get_lang_wds(doc["lang"][0]), # we use args.lang because it has been converted to hplt codes
+    seg_langs = doc["seg_langs_openlid_v3"]
+    doc_lang = doc["openlid_v3"]["lang"][0]
+    wds_seg_langs = list(map(get_lang_wds, seg_langs))
+    doc["doc_scores"] = scorer.score_document(
+            ref_lang=get_lang_wds(doc_lang).split('_')[0],
+            ref_script=doc_lang.split("_")[1],
             lang_segments=wds_seg_langs,
-            scores_lang=[1.0]*len(doc["seg_langs"]), #TODO hack, should remove this
             document_text=doc["text"],
-            id=doc["id"],
-            script_sys=doc["lang"][0].split("_")[1],
+            doc_id=doc["id"],
             raw_score=False,
             )
 
