@@ -22,13 +22,15 @@ secrets_list=$WORKSPACE/trufflehog_secrets/secrets.$L-$batch.txt
 mkdir -p $(dirname $secrets_list)
 mkdir -p $out_dir
 #trap EXIT "rm $secrets_list"
-/usr/bin/time -v \
-singularity exec --bind $(dirname $INPUT) monotextor.sif \
-    trufflehog filesystem $INPUT --json --no-update \
-| jq -r ".Raw" \
-| awk 'length($0)>10' \
-| LC_ALL=C sort -u --parallel=64 -S 50% \
->$secrets_list
+if ! test -s $secrets_list; then
+    /usr/bin/time -v \
+    singularity exec --bind $(dirname $INPUT) monotextor.sif \
+        trufflehog filesystem $INPUT --json --no-update \
+    | jq -r ".Raw" \
+    | awk 'length($0)>10' \
+    | LC_ALL=C sort -u --parallel=64 -S 50% \
+    >$secrets_list
+fi
 
 # Run annotation parallel loop
 # singularity container will run gnu parallel to avoid many containers being launched
@@ -40,8 +42,10 @@ singularity exec --bind $FLASH_TMP -B $(dirname $secrets_list) monotextor.sif \
 | /usr/bin/time -v \
 singularity exec --bind $(pwd -P) --pwd $(pwd -P) monotextor.sif \
 parallel --pipe -k \
-    --halt now,fail=1 \
-    -j200 --block 20M python scripts/annotate.py -a $L -e blocklists/adult_domains \
+    --halt soon,fail=1 \
+    -j200 --block 20M \
+    python scripts/annotate.py -a $L -e blocklists/adult_domains \
+        -c scripts/crawl_names.tsv.zst \
 | zstdmt -T64 -10 \
 > $OUTPUT.tmp \
 || {
