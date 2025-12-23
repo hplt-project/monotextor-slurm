@@ -17,7 +17,7 @@ mkdir -p $WORKSPACE/tasks_list
 entries=$WORKSPACE/tasks_list/20.processing
 if [ ! -s $entries ];
 then
-    for lang in `cat langs | grep -v unk`
+    for lang in `cat langs`
     do
         # only create tasks for existing completed dedup files
         batches=`find -L $WORKSPACE/collections_merged/$lang -type f -name "*batch_*.jsonl.zst" -exec basename {} \;`
@@ -35,7 +35,7 @@ mkdir -p $SLURM_LOGS_DIR/workers
 # Create an allocation queue that will allocate a full node for each worker
 # each worker will process one task
 hq alloc add slurm --name processing \
-    --workers-per-alloc 1 --max-worker-count $WORKERS --backlog $WORKERS \
+    --max-workers-per-alloc 1 --max-worker-count $WORKERS --backlog $WORKERS \
     --idle-timeout $idle_timeout --time-limit 72h \
     -- -p small -A $SBATCH_ACCOUNT \
     --cpus-per-task 128 --ntasks 1 --mem-per-cpu 1750 \
@@ -66,7 +66,7 @@ hq alloc remove $qid
 # each worker will process one task
 # this time allocating GPUs
 hq alloc add slurm --name registers \
-    --workers-per-alloc $GPU_NODES --max-worker-count $GPU_WORKERS --backlog $GPU_WORKERS \
+    --max-workers-per-alloc $GPU_NODES --max-worker-count $GPU_WORKERS --backlog $GPU_WORKERS \
     --idle-timeout $idle_timeout --time-limit 48h \
     -- -p standard-g -A $SBATCH_ACCOUNT \
     --nodes $GPU_NODES --ntasks-per-node=1 --gpus-per-task=8 \
