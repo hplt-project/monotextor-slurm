@@ -45,7 +45,7 @@ The procedure does the following, in one job per collection:
 ### Annotation
 The annotation step consists of adding multiple metadata fields to each document (using [annotate.py](scripts/annotate.py)):
  - `id`: unique id for the document, derived from the WARC file, url and timestamp (`f`, `u`, `ts` fields).
- - `seg-langs`: segment level language identification. An array of size equal to the number of segments in the document (each segment being delimited by a `\n`). The language identifiaction tool for this step was [heliport](https://github.com/ZJaume/heliport), a fast port of HeLI-OTS trained with the same data as the language identifier for documents.
+ - `seg-langs`: segment level language identification. An array of size equal to the number of segments in the document (each segment being delimited by a `\n`). The language identification tool for this step was [heliport](https://github.com/ZJaume/heliport), a fast port of HeLI-OTS trained with the same data as the language identifier for documents.
  - `robots`: robots.txt compliance (if the document has been disallowed for crawling.
  - [monofixer](https://github.com/bitextor/bifixer) to fix encoding issues and remove html entities. This step does not add any metadata field, it just fixes the document text.
  - `pii`: look for PII information with [multilingual-pii-tool](https://github.com/mmanteli/multilingual-PII-tool). In case it any match is found, the field specifies the unicode character offsets for every match.
