@@ -69,7 +69,7 @@ To do this, the `30.clean.sh` step needs to be run.
 This step will create a new version of the corpus, removing all the documents that do [not meet all of these criteria](30.clean#L26):
  - The `filter` field value is `keep`.
  - The `robots` field value is `allowed`.
- - The overall doccument score (first value of the array: `doc_scores[0]`) is equal or higher than 5.
+ - The overall document score (first value of the array: `doc_scores[0]`) is equal or higher than 5.
 
 ## Install
 To avoid conflicts with the cluster installed software or available modules and be more cluster filesystem friendly, deacreasing dramatically the amount of files needed for the software installation, a Singularity container needs to be built.
