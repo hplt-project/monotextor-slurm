@@ -10,7 +10,8 @@ use ahash::AHasher;
 use clap::Parser;
 use env_logger::Env;
 use fastbloom_rs::{FilterBuilder, Membership};
-use log::{error, info};
+use glob::glob;
+use log::{error, info, debug};
 use parse_size::parse_size;
 use zstd::stream::read::Decoder;
 
@@ -23,7 +24,7 @@ use monotextor_utils::DocumentText;
 struct Args {
     #[clap(help = "Output file prefix")]
     out_prefix: String,
-    #[clap(help = "zstd compressed jsonl files to be filtered.")]
+    #[clap(help = "List or glob of zstd compressed jsonl files to be filtered.")]
     files: Vec<String>,
 
     #[clap(long, short, help="Estimated number of elements",
@@ -53,10 +54,28 @@ fn calculate_hash<T: Hash>(t: &T) -> u64 {
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
-    let args = Args::parse();
+    let mut args = Args::parse();
     if args.files.len() < 1 {
         error!("error: files requires at least 1 values");
         std::process::exit(1);
+    }
+
+    // If only one element, do glob expansion
+    if args.files.len() == 1 {
+        info!("Expanding glob");
+        let mut files: Vec<String> = glob(&args.files[0])
+            .expect("Failed to expand glob")
+            .into_iter()
+            .map(|p| {
+                match p {
+                    Ok(path) => path.to_str().unwrap().to_string(),
+                    Err(e) => panic!("Could not read file {:?} from glob", e),
+                }
+            })
+            .collect();
+        args.files.clear();
+        args.files.append(&mut files);
+        debug!("Expanded glob to {:?}", args.files);
     }
 
     info!("Initializing BloomFilter");

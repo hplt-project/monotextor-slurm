@@ -11,7 +11,7 @@ use clap::Parser;
 use env_logger::Env;
 use fst::Set;
 use itertools::Itertools;
-use log::info;
+use log::{debug, info};
 use memmap2::Mmap;
 use rayon::prelude::*;
 use regex::Regex;

@@ -485,6 +485,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "50a99dbe56b72736564cfa4b85bf9a33079f16ae8b74983ab06af3b1a3696b11"
 
 [[package]]
+name = "glob"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
+
+[[package]]
 name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -663,6 +669,7 @@ dependencies = [
  "fnv",
  "fst",
  "gaoya",
+ "glob",
  "heli_otr",
  "indicatif",
  "itertools 0.11.0",
