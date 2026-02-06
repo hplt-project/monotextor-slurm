@@ -203,3 +203,7 @@ For example, the resulting JSON will be something like:
 ```
 In each document `text` field, each paragraph is concatenated using new-line separators.
 The first 7 fields are inherited from `warc2text` HTML extraction from the WARCs, explained [here](https://github.com/bitextor/warc2text/tree/v1.2.0#stdout), with the exception of `p` field which is replaced by `text` and `l` replaced by `lang` and `prob`, which describe the three top identified languages for the document and their prediction probabilities.
+
+# Acknowledgements
+
+This project has received funding from the European Union’s Horizon Europe research and innovation programme under grant agreement No 101070350 and from UK Research and Innovation (UKRI) under the UK government’s Horizon Europe funding guarantee [grant number 10052546]
