@@ -33,7 +33,7 @@ RUN uv pip install --system -r /opt/reqs.txt \
     && heli-convert \
     && rm -fr /heli-otr
 
-COPY --exclude=target utils /opt/monotextor_utils
+COPY utils /opt/monotextor_utils
 RUN cargo install \
     --locked \
     --root /usr/local \
