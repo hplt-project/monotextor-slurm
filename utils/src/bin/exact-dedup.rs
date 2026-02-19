@@ -131,8 +131,8 @@ fn main() {
         if !index.contains(bytes) {
             kept_docs += 1;
             index.add(bytes);
-            writer.write(&line).unwrap();
-            writer.write(b"\n").unwrap();
+            writer.write_line(&line).unwrap();
+            // writer.write(b"\n").unwrap();
         }
     }
     writer.flush().unwrap();

@@ -71,6 +71,17 @@ impl ZSplit {
         Ok(())
     }
 
+    pub fn write_line(&mut self, content: &[u8]) -> std::io::Result<()> {
+        if self.bytes_written > self.size_bytes {
+            self.rotate()?;
+        }
+        self.encoder.write_all(content)?;
+        self.encoder.write_all(b"\n")?;
+        self.bytes_written += content.len() + 1;
+        Ok(())
+    }
+
+
     pub fn flush(&mut self) -> std::io::Result<()> {
         self.encoder.flush()
     }
