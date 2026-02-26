@@ -101,8 +101,8 @@ fn main() {
     )
     .unwrap();
 
-    let mut num_docs = 0;
-    let mut kept_docs = 0;
+    let mut num_docs = 0_u64;
+    let mut kept_docs = 0_u64;
     thread::spawn(move || {
         for filename in args.files {
             let file =
@@ -149,7 +149,7 @@ fn main() {
     );
     info!(
         "Throughput: {:.1} docs/s",
-        num_docs as f32 / now.elapsed().as_secs_f32()
+        num_docs as f64 / now.elapsed().as_secs_f64()
     );
     // info!("Unique elements: {}", index.len());
 }
