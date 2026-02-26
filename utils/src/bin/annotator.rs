@@ -66,6 +66,8 @@ struct Document {
     allowed: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     htmllang: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    metalang: Option<Vec<String>>,
     #[serde(alias = "glotlid-v3")]
     glotlid_v3: Lang,
     #[serde(alias = "openlid-v3")]
