@@ -7,6 +7,7 @@ logs/
 blocklists/*
 !blocklists/*.gz
 !blocklists/hplt_adult_domains
+!blocklists/cc-opt-out.txt
 lid*.bin
 *.sif
 .env.python
